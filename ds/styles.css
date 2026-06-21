@@ -1,0 +1,53 @@
+/* HunterFit Design System — Aurora Maximalism */
+/* CSS custom properties mirror the design tokens in ds/index.tsx  */
+
+:root {
+  /* Surfaces */
+  --hf-bg:           #07080B;
+  --hf-bg-elevated:  #101319;
+  --hf-panel:        #0C0E13;
+  --hf-panel-border: rgba(255, 255, 255, 0.08);
+
+  /* Accent palette */
+  --hf-glow:         #8AB4FF;
+  --hf-primary:      #5B7CFF;
+  --hf-accent:       #C084FC;
+  --hf-success:      #4ADE80;
+  --hf-danger:       #FB7185;
+  --hf-warning:      #FBBF24;
+  --hf-gold:         #F5B942;
+
+  /* Text */
+  --hf-text:         #F4F6FB;
+  --hf-text-dim:     #9BA3B4;
+  --hf-text-faint:   #5A6172;
+
+  /* Brand gradient */
+  --hf-brand-gradient: linear-gradient(135deg, #5B7CFF, #C084FC, #FB7185);
+  --hf-mana-gradient:  linear-gradient(90deg,  #5B7CFF, #8AB4FF);
+
+  /* Spacing */
+  --hf-space-xs: 4px;
+  --hf-space-sm: 8px;
+  --hf-space-md: 16px;
+  --hf-space-lg: 24px;
+  --hf-space-xl: 32px;
+
+  /* Radius */
+  --hf-radius-sm:   12px;
+  --hf-radius-md:   18px;
+  --hf-radius-lg:   24px;
+  --hf-radius-pill: 999px;
+}
+
+/* Preview iframe reset */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--hf-bg);
+  color: var(--hf-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; }
+input  { font-family: inherit; }
+input::placeholder { color: var(--hf-text-faint); }

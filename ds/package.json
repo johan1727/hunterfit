@@ -1,0 +1,7 @@
+{
+  "name": "hunterfit-ds",
+  "version": "1.0.0",
+  "main": "index.tsx",
+  "types": "dist/index.d.ts",
+  "private": true
+}

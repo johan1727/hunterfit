@@ -42,3 +42,10 @@ example
 # generated native folders
 /ios
 /android
+
+# design-sync build artifacts (regenerated)
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules

@@ -1,0 +1,9 @@
+{
+  "projectId": "bd45737e-c7f5-4b0e-b9d1-dc0fabc86cb7",
+  "shape": "package",
+  "pkg": "hunterfit-ds",
+  "globalName": "HunterFitDS",
+  "cssEntry": "./ds/styles.css",
+  "buildCmd": "node .ds-sync/package-build.mjs --config .design-sync/config.json --node-modules ./node_modules --inputs ./ds --entry ./ds/index.tsx --out ./ds-bundle",
+  "readmeHeader": ".design-sync/conventions.md"
+}
