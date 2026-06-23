@@ -301,6 +301,12 @@ export default function NutritionScreen() {
               variant="ghost"
               onPress={() => router.push('/nutrition/recipes' as any)}
             />
+            <SystemButton
+              title="🤖 Generar Receta con IA"
+              onPress={() => router.push('/nutrition/recipe')}
+              variant="gradient"
+              style={{ marginTop: spacing.md }}
+            />
           </>
         ) : (
           <SystemPanel style={{ alignItems: 'center', gap: spacing.sm }}>
