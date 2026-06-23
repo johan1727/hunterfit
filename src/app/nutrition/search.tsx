@@ -1,64 +1,148 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, Text, TextInput, FlatList, Alert, Image } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, FlatList, Alert } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../hooks/useAuth';
-import { useProfile, useFoodSearch } from '../../hooks/useData';
+import { useDemoStore } from '../../lib/demoStore';
+import { useProfile, useFoodSearch, useDefaultFoods, useGrantXp, useFavorites, useAddFavorite, useRemoveFavorite } from '../../hooks/useData';
 import { supabase } from '../../lib/supabase';
 import { localDateString } from '../../lib/dates';
 import { analyzeFoodPhoto, type FoodAnalysisResult } from '../../services/ai';
-import { colors, spacing } from '../../theme/system';
-import { SystemPanel, SystemTitle, SystemText, SystemButton } from '../../components/system';
+import { updateQuestProgress } from '../../services/quests';
+import { checkAndAwardBadges } from '../../services/badges';
+import { useAuthGuard } from '../../lib/authGuard';
+
+async function checkMealBadges(userId: string) {
+  const { data: days } = await supabase
+    .from('meal_logs').select('date').eq('user_id', userId);
+  const uniqueDays = new Set((days ?? []).map((r: any) => r.date)).size;
+  const { data: p } = await supabase.from('profiles').select('level,rank,streak_days').eq('id', userId).single();
+  await checkAndAwardBadges(userId, {
+    totalMealDays: uniqueDays,
+    level: p?.level ?? 1,
+    rank: p?.rank ?? 'E',
+    streakDays: p?.streak_days ?? 0,
+  });
+}
+
+async function checkMealQuest(userId: string) {
+  const today = localDateString();
+  const [{ data: meals }, { data: quests }] = await Promise.all([
+    supabase.from('meal_logs').select('id').eq('user_id', userId).eq('date', today),
+    supabase.from('quests').select('*').eq('user_id', userId).eq('date', today).eq('type', 'log_meals').eq('completed', false),
+  ]);
+  if (quests && quests.length > 0 && meals) {
+    await updateQuestProgress(quests[0] as any, meals.length);
+  }
+}
+import { colors, gradients, radius, spacing } from '../../theme/system';
+import {
+  AuroraBackground,
+  GradientText,
+  Pill,
+  SystemPanel,
+  SystemWindowPanel,
+  SystemText,
+  SystemButton,
+  SystemInput,
+  SystemLabel,
+  StatRow,
+} from '../../components/system';
+import { EmptyState } from '../../components/EmptyState';
+import { EMPTY_STATES } from '../../lib/emptyState';
 import type { Food } from '../../types/db';
+
+const MEAL_TYPES = [
+  { key: 'desayuno', label: 'Desayuno', dot: colors.warning },
+  { key: 'comida', label: 'Comida', dot: colors.glow },
+  { key: 'cena', label: 'Cena', dot: colors.accent },
+  { key: 'snack', label: 'Snack', dot: colors.success },
+] as const;
+
+type MealType = typeof MEAL_TYPES[number]['key'];
 
 export default function SearchFoodScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ date?: string }>();
   const { userId } = useAuth();
+  const isDemo = useDemoStore((s) => s.isDemo);
+  const { handleAuthError } = useAuthGuard();
   const { data: profile } = useProfile(userId);
+  const logDate = params.date ?? localDateString();
   const [searchTerm, setSearchTerm] = useState('');
-  const { data: foods = [] } = useFoodSearch(searchTerm);
+  const { data: searchResults = [] } = useFoodSearch(searchTerm);
+  const { data: defaultFoods = [] } = useDefaultFoods();
+  // Mostrar resultados de búsqueda si hay (≥2 caracteres), si no mostrar alimentos por defecto
+  const foods = searchTerm.length >= 2 ? searchResults : defaultFoods;
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [quantity, setQuantity] = useState('100');
-  const [mealType, setMealType] = useState<'desayuno' | 'comida' | 'cena' | 'snack'>('comida');
+  const [mealType, setMealType] = useState<MealType>('comida');
   const [saving, setSaving] = useState(false);
   const [analyzeLoading, setAnalyzeLoading] = useState(false);
   const [aiResults, setAiResults] = useState<FoodAnalysisResult | null>(null);
   const [savingAi, setSavingAi] = useState(false);
+  const grantXp = useGrantXp(userId);
+
+  // Formulario manual
+  const [showManual, setShowManual] = useState(false);
+  const [manualName, setManualName] = useState('');
+  const [manualKcal, setManualKcal] = useState('');
+  const [manualProtein, setManualProtein] = useState('');
+  const [manualCarbs, setManualCarbs] = useState('');
+  const [manualFat, setManualFat] = useState('');
+  const [savingManual, setSavingManual] = useState(false);
+
+  const favorites = useFavorites(isDemo ? null : userId);
+  const addFavorite = useAddFavorite(isDemo ? null : userId);
+  const removeFavorite = useRemoveFavorite(isDemo ? null : userId);
+  const [showFavorites, setShowFavorites] = useState(false);
+
 
   async function handleAddMeal() {
-    if (!selectedFood || !quantity) return;
+    if (!selectedFood || !quantity || !userId) return;
+    if (isDemo) {
+      Alert.alert('Modo exploración', 'Los cambios no se guardan en modo demo.');
+      return;
+    }
     try {
       setSaving(true);
       const qty = parseFloat(quantity);
-      const multiplier = qty / selectedFood.serving_g;
+      const mult = qty / selectedFood.serving_g;
       const { error } = await supabase.from('meal_logs').insert({
         user_id: userId,
-        date: localDateString(),
+        date: logDate,
         meal_type: mealType,
         food_id: selectedFood.id,
         custom_name: selectedFood.name_es,
         quantity_g: Math.round(qty),
-        kcal: Math.round(selectedFood.kcal * multiplier),
-        protein_g: Math.round(selectedFood.protein_g * multiplier * 10) / 10,
-        carbs_g: Math.round(selectedFood.carbs_g * multiplier * 10) / 10,
-        fat_g: Math.round(selectedFood.fat_g * multiplier * 10) / 10,
+        kcal: Math.round(selectedFood.kcal * mult),
+        protein_g: Math.round(selectedFood.protein_g * mult * 10) / 10,
+        carbs_g: Math.round(selectedFood.carbs_g * mult * 10) / 10,
+        fat_g: Math.round(selectedFood.fat_g * mult * 10) / 10,
         source: 'manual',
       });
       if (error) throw error;
+      grantXp.mutate(10);
+      void checkMealQuest(userId); void checkMealBadges(userId);
+      void supabase.rpc('update_streak');
       router.replace('/(tabs)/nutrition');
-    } catch (err) {
-      console.error('Error:', err);
+    } catch (err: any) {
+      const isAuthError = handleAuthError(err, 'Agregar comida');
+      if (!isAuthError) {
+        console.error('Error:', err);
+      }
     } finally {
       setSaving(false);
     }
   }
 
   async function handleAnalyzePhoto() {
-    if (!profile?.is_premium) {
-      Alert.alert('Premium Requerido', 'El análisis de fotos es una característica premium');
+    if (!userId) return;
+    if (isDemo) {
+      Alert.alert('Modo exploración', 'El análisis con IA no está disponible en modo demo.');
       return;
     }
-
     try {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ['images'],
@@ -67,14 +151,11 @@ export default function SearchFoodScreen() {
         quality: 0.7,
         base64: true,
       });
-
       if (!result.canceled && result.assets[0]?.base64) {
         setAnalyzeLoading(true);
-        const analysisResult = await analyzeFoodPhoto(result.assets[0].base64, 'image/jpeg');
-        setAiResults(analysisResult);
+        setAiResults(await analyzeFoodPhoto(result.assets[0].base64, 'image/jpeg'));
       }
-    } catch (err) {
-      console.error('Error:', err);
+    } catch {
       Alert.alert('Error', 'No se pudo analizar la foto');
     } finally {
       setAnalyzeLoading(false);
@@ -82,12 +163,16 @@ export default function SearchFoodScreen() {
   }
 
   async function handleSaveAiResults() {
-    if (!aiResults || aiResults.items.length === 0) return;
+    if (!aiResults?.items.length || !userId) return;
+    if (isDemo) {
+      Alert.alert('Modo exploración', 'Los cambios no se guardan en modo demo.');
+      return;
+    }
     try {
       setSavingAi(true);
       const rows = aiResults.items.map((item) => ({
         user_id: userId,
-        date: localDateString(),
+        date: logDate,
         meal_type: mealType,
         custom_name: item.nombre,
         quantity_g: Math.round(item.gramos_estimados),
@@ -99,251 +184,483 @@ export default function SearchFoodScreen() {
       }));
       const { error } = await supabase.from('meal_logs').insert(rows);
       if (error) throw error;
+      grantXp.mutate(aiResults.items.length * 10);
+      void checkMealQuest(userId); void checkMealBadges(userId);
+      void supabase.rpc('update_streak');
       router.replace('/(tabs)/nutrition');
-    } catch (err) {
-      console.error('Error:', err);
+    } catch {
       Alert.alert('Error', 'No se pudieron guardar los alimentos');
     } finally {
       setSavingAi(false);
     }
   }
 
+  async function handleSaveManual() {
+    if (!manualName.trim() || !manualKcal || !userId) return;
+    if (isDemo) { Alert.alert('Modo exploración', 'Los cambios no se guardan en modo demo.'); return; }
+    try {
+      setSavingManual(true);
+      const { error } = await supabase.from('meal_logs').insert({
+        user_id: userId,
+        date: logDate,
+        meal_type: mealType,
+        custom_name: manualName.trim(),
+        quantity_g: 100,
+        kcal: Math.round(parseFloat(manualKcal) || 0),
+        protein_g: Math.round((parseFloat(manualProtein) || 0) * 10) / 10,
+        carbs_g: Math.round((parseFloat(manualCarbs) || 0) * 10) / 10,
+        fat_g: Math.round((parseFloat(manualFat) || 0) * 10) / 10,
+        source: 'manual',
+      });
+      if (error) throw error;
+      grantXp.mutate(10);
+      void checkMealQuest(userId); void checkMealBadges(userId);
+      void supabase.rpc('update_streak');
+      router.replace('/(tabs)/nutrition');
+    } catch {
+      Alert.alert('Error', 'No se pudo guardar el alimento');
+    } finally {
+      setSavingManual(false);
+    }
+  }
+
+  function isFavorite(foodId: number) {
+    return (favorites.data ?? []).some((f) => f.food_id === foodId);
+  }
+
+  function toggleFavorite(food: Food) {
+    const existing = (favorites.data ?? []).find((f) => f.food_id === food.id);
+    if (existing) {
+      removeFavorite.mutate(existing.id);
+    } else {
+      addFavorite.mutate({
+        name: food.name_es,
+        kcal: food.kcal,
+        protein_g: food.protein_g,
+        carbs_g: food.carbs_g,
+        fat_g: food.fat_g,
+        food_id: food.id,
+      });
+    }
+  }
+
+  async function handleAddFromFavorite(fav: { id: string; name: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number }) {
+    if (!fav || isDemo || !userId) return;
+    try {
+      const { error } = await supabase.from('meal_logs').insert({
+        user_id: userId,
+        date: logDate,
+        meal_type: mealType,
+        custom_name: fav.name,
+        quantity_g: 100,
+        kcal: fav.kcal,
+        protein_g: fav.protein_g,
+        carbs_g: fav.carbs_g,
+        fat_g: fav.fat_g,
+        source: 'favorite',
+      });
+      if (error) throw error;
+      grantXp.mutate(10);
+      void checkMealQuest(userId!); void checkMealBadges(userId!);
+      void supabase.rpc('update_streak');
+      router.replace('/(tabs)/nutrition');
+    } catch {
+      Alert.alert('Error', 'No se pudo agregar el favorito');
+    }
+  }
+
+  const qty = parseFloat(quantity) || 0;
+  const mult = selectedFood ? qty / selectedFood.serving_g : 0;
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <SystemPanel style={styles.header}>
-          <SystemTitle>BUSCAR ALIMENTO</SystemTitle>
-          {profile?.is_premium && (
-            <SystemButton
-              title="📸 ANALIZAR CON IA"
-              loading={analyzeLoading}
-              onPress={handleAnalyzePhoto}
-              variant="ghost"
-              style={{ marginTop: spacing.md }}
-            />
-          )}
-        </SystemPanel>
+    <SafeAreaView style={styles.root}>
+      <AuroraBackground />
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
-        <SystemPanel>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Busca un alimento (ej: pollo, manzana, arroz)"
-            placeholderTextColor={colors.textDim}
-            value={searchTerm}
-            onChangeText={setSearchTerm}
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <GradientText style={styles.title}>Buscar{'\n'}Alimento</GradientText>
+            <Pressable
+              onPress={() => router.push(`/nutrition/barcode?date=${logDate}&type=${mealType}`)}
+              style={styles.barcodeBtn}
+            >
+              <SystemText style={{ fontSize: 22 }}>▦</SystemText>
+              <SystemText dim style={{ fontSize: 10, marginTop: 2 }}>Barcode</SystemText>
+            </Pressable>
+          </View>
+          <SystemButton
+            title="📸  Analizar foto con IA"
+            variant="ghost"
+            loading={analyzeLoading}
+            onPress={handleAnalyzePhoto}
           />
-        </SystemPanel>
+        </View>
 
-        {aiResults ? (
-          <SystemPanel>
-            <SystemTitle style={{ marginBottom: spacing.sm }}>RESULTADO DEL ANÁLISIS</SystemTitle>
-            <SystemText style={{ marginBottom: spacing.md, color: colors.textDim }}>
-              Confianza: {aiResults.confianza}
+        {/* Selector de tipo de comida */}
+        <View style={styles.mealTypeRow}>
+          {MEAL_TYPES.map(({ key, label, dot }) => {
+            const active = mealType === key;
+            return (
+              <Pressable
+                key={key}
+                onPress={() => setMealType(key)}
+                style={[
+                  styles.mealPill,
+                  active && { borderColor: dot + '60', backgroundColor: dot + '18' },
+                ]}
+              >
+                <View style={[styles.mealDot, { backgroundColor: active ? dot : colors.textFaint }]} />
+                <SystemText style={[styles.mealPillText, { color: active ? colors.text : colors.textDim }]}>
+                  {label}
+                </SystemText>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* Favoritos */}
+        {!isDemo && (favorites.data?.length ?? 0) > 0 && (
+          <Pressable
+            onPress={() => setShowFavorites((v) => !v)}
+            style={styles.favToggle}
+          >
+            <SystemText style={{ fontSize: 13, color: colors.warning, fontWeight: '700' }}>
+              ⭐ Mis favoritos ({favorites.data!.length})
             </SystemText>
-            {aiResults.items.map((item, i) => (
-              <View key={i} style={styles.foodItem}>
+            <SystemText dim style={{ fontSize: 12 }}>{showFavorites ? '▲' : '▼'}</SystemText>
+          </Pressable>
+        )}
+        {showFavorites && (favorites.data?.length ?? 0) > 0 && (
+          <SystemPanel style={{ gap: 0 }}>
+            {favorites.data!.map((fav) => (
+              <Pressable
+                key={fav.id}
+                style={styles.foodRow}
+                onPress={() => handleAddFromFavorite(fav)}
+              >
+                <SystemText style={{ fontSize: 20 }}>⭐</SystemText>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.foodName}>{item.nombre}</Text>
-                  <Text style={styles.foodInfo}>
-                    ~{Math.round(item.gramos_estimados)}g • {Math.round(item.protein_g)}g P • {Math.round(item.carbs_g)}g C • {Math.round(item.fat_g)}g G
-                  </Text>
+                  <SystemText style={styles.foodName}>{fav.name}</SystemText>
+                  <SystemText dim style={styles.foodMeta}>
+                    {Math.round(fav.kcal)} kcal · {fav.protein_g}g P
+                  </SystemText>
                 </View>
-                <Text style={styles.foodName}>{Math.round(item.kcal)} kcal</Text>
+                <Pressable onPress={() => removeFavorite.mutate(fav.id)} hitSlop={8}>
+                  <SystemText style={{ color: colors.danger, fontSize: 16 }}>✕</SystemText>
+                </Pressable>
+              </Pressable>
+            ))}
+          </SystemPanel>
+        )}
+
+        {/* Buscador */}
+        <SystemInput
+          placeholder="Busca un alimento (ej: pollo, arroz, manzana)"
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+        />
+
+        {/* Resultados IA */}
+        {aiResults && (
+          <SystemWindowPanel style={styles.aiResults}>
+            <Pill dotColor={colors.glow}>Análisis IA</Pill>
+            <SystemText dim style={{ fontSize: 13 }}>Confianza: {aiResults.confianza}</SystemText>
+            {aiResults.items.map((item, i) => (
+              <View key={i} style={styles.foodRow}>
+                <View style={{ flex: 1 }}>
+                  <SystemText style={styles.foodName}>{item.nombre}</SystemText>
+                  <SystemText dim style={styles.foodMeta}>
+                    ~{Math.round(item.gramos_estimados)}g · {Math.round(item.protein_g)}P · {Math.round(item.carbs_g)}C · {Math.round(item.fat_g)}G
+                  </SystemText>
+                </View>
+                <SystemText style={{ color: colors.glow, fontWeight: '700' }}>
+                  {Math.round(item.kcal)} kcal
+                </SystemText>
               </View>
             ))}
-
-            <Text style={styles.label}>Agregar como:</Text>
-            <View style={styles.mealTypeButtons}>
-              {(['desayuno', 'comida', 'cena', 'snack'] as const).map((type) => (
-                <Pressable
-                  key={type}
-                  style={[styles.mealTypeBtn, mealType === type && styles.mealTypeBtnActive]}
-                  onPress={() => setMealType(type)}
-                >
-                  <Text style={[styles.mealTypeBtnText, mealType === type && { color: colors.white }]}>
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
             <SystemButton
-              title="GUARDAR ALIMENTOS DETECTADOS"
+              title="Guardar alimentos detectados"
+              variant="gradient"
               loading={savingAi}
               onPress={handleSaveAiResults}
             />
             <SystemButton
-              title="DESCARTAR"
+              title="Descartar"
               variant="ghost"
-              onPress={() => setAiResults(null)}
               disabled={savingAi}
-              style={{ marginTop: spacing.sm }}
+              onPress={() => setAiResults(null)}
             />
-          </SystemPanel>
-        ) : null}
+          </SystemWindowPanel>
+        )}
 
-        {searchTerm.length >= 2 && foods.length > 0 ? (
-          <SystemPanel>
-            <Text style={styles.resultsLabel}>Resultados ({foods.length})</Text>
+        {/* Lista de resultados o sugeridos */}
+        {foods.length > 0 ? (
+          <SystemPanel style={styles.resultsPanel}>
+            <SystemText dim style={styles.resultsLabel}>
+              {searchTerm.length >= 2 ? `${foods.length} resultado${foods.length !== 1 ? 's' : ''}` : 'Populares'}
+            </SystemText>
             <FlatList
               data={foods}
               keyExtractor={(item) => `${item.id}`}
               scrollEnabled={false}
+              ItemSeparatorComponent={() => <View style={styles.separator} />}
               renderItem={({ item }) => (
                 <Pressable
-                  style={[styles.foodItem, selectedFood?.id === item.id && styles.foodItemSelected]}
-                  onPress={() => {
-                    setSelectedFood(item);
-                    setQuantity(item.serving_g.toString());
-                  }}
+                  style={[styles.foodRow, selectedFood?.id === item.id && styles.foodRowSelected]}
+                  onPress={() => { setSelectedFood(item); setQuantity(item.serving_g.toString()); }}
                 >
+                  <SystemText style={{ fontSize: 22 }}>{(item as any).icon ?? '🍽️'}</SystemText>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.foodName}>{item.name_es}</Text>
-                    <Text style={styles.foodInfo}>
-                      {item.kcal} kcal • {item.protein_g}g P • {item.serving_g}g porción
-                    </Text>
+                    <SystemText style={styles.foodName}>{item.name_es}</SystemText>
+                    <SystemText dim style={styles.foodMeta}>
+                      {item.kcal} kcal · {item.protein_g}g proteína · porción {item.serving_g}g
+                    </SystemText>
                   </View>
-                  <Text style={styles.selectArrow}>›</Text>
+                  <Pressable
+                    onPress={(e) => { e.stopPropagation(); toggleFavorite(item); }}
+                    hitSlop={8}
+                  >
+                    <SystemText style={{ fontSize: 18, color: isFavorite(item.id) ? colors.warning : colors.textFaint }}>
+                      {isFavorite(item.id) ? '⭐' : '☆'}
+                    </SystemText>
+                  </Pressable>
+                  <SystemText style={{ color: colors.glow, fontSize: 18 }}>›</SystemText>
                 </Pressable>
               )}
             />
           </SystemPanel>
         ) : searchTerm.length >= 2 ? (
           <SystemPanel>
-            <SystemText style={{ textAlign: 'center', color: colors.textDim }}>
-              Sin resultados. Intenta otro término.
+            <SystemText dim style={{ textAlign: 'center', marginBottom: spacing.sm }}>
+              Sin resultados para "{searchTerm}"
             </SystemText>
+            <SystemButton
+              title="✏️  Crear alimento manualmente"
+              variant="ghost"
+              onPress={() => { setShowManual(true); setManualName(searchTerm); }}
+            />
           </SystemPanel>
         ) : null}
 
-        {selectedFood ? (
-          <SystemPanel>
-            <SystemTitle style={{ marginBottom: spacing.md }}>
-              {selectedFood.name_es}
-            </SystemTitle>
+        {/* Empty state */}
+        {!showManual && searchTerm.length < 2 && foods.length === 0 && (favorites.data?.length ?? 0) === 0 && (
+          <EmptyState
+            {...EMPTY_STATES.meals}
+            cta={{ label: 'Buscar alimentos', onPress: () => setSearchTerm('pollo') }}
+          />
+        )}
 
-            <Text style={styles.label}>Cantidad (gramos)</Text>
-            <TextInput
-              style={styles.quantityInput}
-              placeholder="100"
-              value={quantity}
-              onChangeText={setQuantity}
-              keyboardType="decimal-pad"
+        {/* Botón crear manual */}
+        {!showManual && (
+          <LinearGradient
+            colors={[colors.glow + '25', colors.accent + '15']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={styles.manualCtaGradient}
+          >
+            <Pressable onPress={() => setShowManual(true)} style={styles.manualCta}>
+              <SystemText style={{ fontSize: 16, fontWeight: '700', color: colors.glow }}>
+                ✏️  Crear alimento personalizado
+              </SystemText>
+              <SystemText dim style={{ fontSize: 12 }}>Ingresa nombre, calorías y macros</SystemText>
+            </Pressable>
+          </LinearGradient>
+        )}
+
+        {/* Formulario manual */}
+        {showManual && (
+          <SystemWindowPanel style={{ gap: spacing.md }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <SystemText style={{ fontSize: 16, fontWeight: '700' }}>Alimento personalizado</SystemText>
+              <Pressable onPress={() => setShowManual(false)}>
+                <SystemText dim style={{ fontSize: 13 }}>Cancelar</SystemText>
+              </Pressable>
+            </View>
+
+            <SystemInput
+              placeholder="Nombre del alimento *"
+              value={manualName}
+              onChangeText={setManualName}
             />
 
-            <Text style={styles.label}>Tipo de Comida</Text>
-            <View style={styles.mealTypeButtons}>
-              {(['desayuno', 'comida', 'cena', 'snack'] as const).map((type) => (
-                <Pressable
-                  key={type}
-                  style={[styles.mealTypeBtn, mealType === type && styles.mealTypeBtnActive]}
-                  onPress={() => setMealType(type)}
-                >
-                  <Text
-                    style={[
-                      styles.mealTypeBtnText,
-                      mealType === type && { color: colors.white },
-                    ]}
-                  >
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
-                  </Text>
-                </Pressable>
-              ))}
+            <View style={styles.macroInputRow}>
+              <View style={styles.macroInputCell}>
+                <SystemText dim style={styles.macroInputLabel}>Calorías *</SystemText>
+                <SystemInput
+                  placeholder="0"
+                  value={manualKcal}
+                  onChangeText={setManualKcal}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              <View style={styles.macroInputCell}>
+                <SystemText dim style={styles.macroInputLabel}>Proteína (g)</SystemText>
+                <SystemInput
+                  placeholder="0"
+                  value={manualProtein}
+                  onChangeText={setManualProtein}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </View>
+            <View style={styles.macroInputRow}>
+              <View style={styles.macroInputCell}>
+                <SystemText dim style={styles.macroInputLabel}>Carbos (g)</SystemText>
+                <SystemInput
+                  placeholder="0"
+                  value={manualCarbs}
+                  onChangeText={setManualCarbs}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              <View style={styles.macroInputCell}>
+                <SystemText dim style={styles.macroInputLabel}>Grasas (g)</SystemText>
+                <SystemInput
+                  placeholder="0"
+                  value={manualFat}
+                  onChangeText={setManualFat}
+                  keyboardType="decimal-pad"
+                />
+              </View>
             </View>
 
-            <View style={styles.nutritionSummary}>
-              <Text style={styles.summaryLabel}>Este alimento te aportará:</Text>
-              {(() => {
-                const qty = parseFloat(quantity) || 0;
-                const multiplier = qty / selectedFood.serving_g;
-                return (
-                  <View style={styles.summaryValues}>
-                    <Text style={styles.summaryValue}>
-                      {(selectedFood.kcal * multiplier).toFixed(0)} kcal
-                    </Text>
-                    <Text style={styles.summaryValue}>
-                      {(selectedFood.protein_g * multiplier).toFixed(1)}g proteína
-                    </Text>
-                    <Text style={styles.summaryValue}>
-                      {(selectedFood.carbs_g * multiplier).toFixed(1)}g carbohidratos
-                    </Text>
-                    <Text style={styles.summaryValue}>
-                      {(selectedFood.fat_g * multiplier).toFixed(1)}g grasas
-                    </Text>
-                  </View>
-                );
-              })()}
-            </View>
+            {/* Preview rápido */}
+            {manualKcal ? (
+              <View style={styles.manualPreview}>
+                <SystemText style={{ color: colors.glow, fontWeight: '900', fontSize: 22 }}>
+                  {manualKcal} kcal
+                </SystemText>
+                <SystemText dim style={{ fontSize: 12 }}>
+                  {manualProtein || 0}g P · {manualCarbs || 0}g C · {manualFat || 0}g G
+                </SystemText>
+              </View>
+            ) : null}
 
             <SystemButton
-              title="AGREGAR A COMIDAS"
+              title="Agregar a mis comidas"
+              variant="gradient"
+              loading={savingManual}
+              disabled={!manualName.trim() || !manualKcal}
+              onPress={handleSaveManual}
+            />
+          </SystemWindowPanel>
+        )}
+
+        {/* Detalle del alimento seleccionado */}
+        {selectedFood && (
+          <SystemWindowPanel style={styles.selectedCard}>
+            <GradientText style={styles.selectedName}>{selectedFood.name_es}</GradientText>
+
+            <View style={styles.qtyRow}>
+              <SystemLabel style={{ flex: 0 }}>Cantidad</SystemLabel>
+              <SystemInput
+                placeholder="100"
+                value={quantity}
+                onChangeText={setQuantity}
+                keyboardType="decimal-pad"
+                style={{ flex: 1 }}
+              />
+              <SystemText dim style={styles.qtyUnit}>g</SystemText>
+            </View>
+
+            {/* Resumen nutricional */}
+            <SystemPanel style={styles.nutritionBox}>
+              <StatRow
+                label="Calorías"
+                value={`${(selectedFood.kcal * mult).toFixed(0)} kcal`}
+              />
+              <StatRow
+                label="Proteína"
+                value={`${(selectedFood.protein_g * mult).toFixed(1)} g`}
+              />
+              <StatRow
+                label="Carbohidratos"
+                value={`${(selectedFood.carbs_g * mult).toFixed(1)} g`}
+              />
+              <StatRow
+                label="Grasas"
+                value={`${(selectedFood.fat_g * mult).toFixed(1)} g`}
+              />
+            </SystemPanel>
+
+            <SystemButton
+              title="Agregar a mis comidas"
+              variant="gradient"
               loading={saving}
               onPress={handleAddMeal}
             />
-          </SystemPanel>
-        ) : null}
+          </SystemWindowPanel>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  scroll: { padding: spacing.md, paddingTop: spacing.lg },
-  header: { marginBottom: spacing.lg },
-  searchInput: {
-    backgroundColor: colors.bgElevated,
-    borderWidth: 1,
+  root: { flex: 1, backgroundColor: colors.bg },
+  scroll: { padding: spacing.lg, paddingTop: spacing.xl, gap: spacing.md, paddingBottom: 80 },
+
+  header: { gap: spacing.sm },
+  title: { fontSize: 38, lineHeight: 42, fontWeight: '900' },
+
+  mealTypeRow: { flexDirection: 'row', gap: spacing.xs },
+  mealPill: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 5, borderRadius: radius.pill, borderWidth: 2,
     borderColor: colors.panelBorder,
-    borderRadius: 10,
-    color: colors.text,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: 16,
-  },
-  resultsLabel: { color: colors.textDim, fontSize: 12, marginBottom: spacing.md, fontWeight: '700' },
-  foodItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.panelBorder,
-  },
-  foodItemSelected: { backgroundColor: `${colors.primary}15` },
-  foodName: { color: colors.text, fontSize: 15, fontWeight: '600' },
-  foodInfo: { color: colors.textDim, fontSize: 12, marginTop: 4 },
-  selectArrow: { color: colors.glow, fontSize: 20, fontWeight: '300' },
-  label: { color: colors.text, fontSize: 13, fontWeight: '700', marginBottom: spacing.sm, marginTop: spacing.md },
-  quantityInput: {
+    paddingVertical: spacing.md, paddingHorizontal: spacing.sm,
     backgroundColor: colors.bgElevated,
-    borderWidth: 1,
-    borderColor: colors.panelBorder,
-    borderRadius: 10,
-    color: colors.text,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: 16,
-    marginBottom: spacing.lg,
   },
-  mealTypeButtons: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.lg },
-  mealTypeBtn: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    marginHorizontal: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.panelBorder,
-    borderRadius: 8,
-    alignItems: 'center',
+  mealDot: { width: 8, height: 8, borderRadius: 4 },
+  mealPillText: { fontSize: 12, fontWeight: '700' },
+
+  resultsPanel: { gap: spacing.sm },
+  resultsLabel: { fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
+  foodRow: {
+    flexDirection: 'row', alignItems: 'center',
+    gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.sm,
+    borderRadius: radius.sm,
   },
-  mealTypeBtnActive: { backgroundColor: colors.primary, borderColor: colors.glow },
-  mealTypeBtnText: { color: colors.text, fontSize: 12, fontWeight: '600' },
-  nutritionSummary: {
-    backgroundColor: colors.bgElevated,
-    borderRadius: 10,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
+  foodRowSelected: { backgroundColor: gradients.brand[0] + '20', borderWidth: 1, borderColor: gradients.brand[0] + '40' },
+  foodName: { fontSize: 15, fontWeight: '600', color: colors.text },
+  foodMeta: { fontSize: 12, marginTop: 3 },
+  separator: { height: 1, backgroundColor: colors.panelBorder },
+
+  aiResults: { gap: spacing.sm },
+
+  barcodeBtn: {
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.bgElevated, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.panelBorder,
+    width: 56, height: 56,
   },
-  summaryLabel: { color: colors.glow, fontSize: 13, fontWeight: '700', marginBottom: spacing.sm },
-  summaryValues: { marginLeft: spacing.md },
-  summaryValue: { color: colors.text, fontSize: 13, marginVertical: 4 },
+
+  favToggle: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: spacing.sm, paddingHorizontal: spacing.md,
+    borderRadius: radius.md, borderWidth: 1,
+    borderColor: colors.warning + '40', backgroundColor: colors.warning + '0F',
+  },
+
+  manualCtaGradient: {
+    borderRadius: radius.lg, borderWidth: 2, borderColor: colors.glow + '50',
+    marginVertical: spacing.md, overflow: 'hidden',
+  },
+  manualCta: {
+    paddingVertical: spacing.lg, paddingHorizontal: spacing.lg,
+    alignItems: 'center', gap: 6,
+  },
+  macroInputRow: { flexDirection: 'row', gap: spacing.sm },
+  macroInputCell: { flex: 1, gap: 6 },
+  macroInputLabel: { fontSize: 11, letterSpacing: 0.5 },
+  manualPreview: {
+    backgroundColor: colors.bgElevated, borderRadius: radius.md,
+    padding: spacing.md, alignItems: 'center', gap: 4,
+  },
+
+  selectedCard: { gap: spacing.md },
+  selectedName: { fontSize: 24, fontWeight: '900' },
+  qtyRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  qtyUnit: { fontSize: 15, fontWeight: '700', width: 20 },
+  nutritionBox: { padding: spacing.md },
 });
