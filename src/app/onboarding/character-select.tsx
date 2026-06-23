@@ -1,13 +1,27 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, Text, Image, Dimensions } from 'react-native';
+import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, Text } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../hooks/useAuth';
 import { useCharacters, useUpdateProfile } from '../../hooks/useData';
-import { colors, rankColors, spacing } from '../../theme/system';
-import { SystemPanel, SystemTitle, SystemText, SystemButton } from '../../components/system';
+import { colors, gradients, radius, spacing } from '../../theme/system';
+import {
+  AuroraBackground,
+  GradientText,
+  Pill,
+  SystemPanel,
+  SystemWindowPanel,
+  SystemText,
+  SystemButton,
+  ProgressBar,
+} from '../../components/system';
 
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = width - spacing.md * 2;
+const ARCHETYPE_ICONS: Record<string, string> = {
+  masa: '⚔️', definicion: '🗡️', agilidad: '💨',
+  movilidad: '🌊', fuerza: '🛡️', general: '⭐',
+};
 
 export default function CharacterSelectScreen() {
   const router = useRouter();
@@ -16,155 +30,202 @@ export default function CharacterSelectScreen() {
   const { data: characters = [], isLoading } = useCharacters();
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  async function handleSelect() {
+  const selected = characters.find((c) => c.id === selectedId);
+
+  async function handleConfirm() {
     if (!selectedId) return;
     await updateProfile.mutateAsync({ active_character_id: selectedId });
     router.push('/onboarding/body-photo');
   }
 
+  function selectChar(id: number) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedId(id);
+  }
+
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <SystemPanel>
-          <SystemText>Cargando personajes...</SystemText>
-        </SystemPanel>
+      <SafeAreaView style={styles.root}>
+        <AuroraBackground />
+        <View style={styles.loadingWrap}>
+          <SystemText dim>Invocando cazadores…</SystemText>
+        </View>
       </SafeAreaView>
     );
   }
 
-  const selected = characters.find((c) => c.id === selectedId);
-
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <SystemPanel style={styles.header}>
-          <SystemTitle>ELIGE TU PERSONAJE</SystemTitle>
-          <SystemText>Selecciona el cazador que te inspirará a entrenar</SystemText>
-        </SystemPanel>
+    <SafeAreaView style={styles.root}>
+      <AuroraBackground />
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Carrusel de personajes */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.carousel}>
-          {characters.map((char) => (
-            <Pressable
-              key={char.id}
-              style={[styles.card, selectedId === char.id && styles.cardSelected]}
-              onPress={() => setSelectedId(char.id)}
-            >
-              <View style={[styles.cardImage, { backgroundColor: colors.bgElevated, justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={{ color: colors.glow, fontSize: 40 }}>⚔️</Text>
-              </View>
-              <View style={styles.cardContent}>
-                <Text style={styles.cardName}>{char.name}</Text>
-                <Text style={styles.cardTitle}>{char.title}</Text>
-              </View>
-            </Pressable>
-          ))}
-        </ScrollView>
+        {/* Header */}
+        <Animated.View entering={FadeInDown.delay(0).springify()} style={styles.header}>
+          <Pill dotColor={gradients.brand[1]}>Selección de personaje</Pill>
+          <GradientText
+            colors={[gradients.brand[1], gradients.brand[2]] as [string, string]}
+            style={styles.title}
+          >
+            Elige tu{'\n'}Cazador
+          </GradientText>
+          <SystemText dim style={{ fontSize: 14 }}>
+            Tu personaje define el enfoque de tus rutinas.
+          </SystemText>
+        </Animated.View>
 
-        {/* Detalles del personaje seleccionado */}
+        {/* Grid 2 columnas */}
+        <Animated.View entering={FadeInDown.delay(80).springify()} style={styles.grid}>
+          {characters.map((char) => {
+            const isSelected = char.id === selectedId;
+            const icon = ARCHETYPE_ICONS[char.archetype] ?? '⚔️';
+
+            return (
+              <Pressable
+                key={char.id}
+                style={styles.gridCell}
+                onPress={() => selectChar(char.id)}
+              >
+                {isSelected ? (
+                  <LinearGradient
+                    colors={gradients.brand as any}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={styles.cardBorder}
+                  >
+                    <View style={[styles.card, styles.cardSelected]}>
+                      <Text style={styles.cardIcon}>{icon}</Text>
+                      <GradientText
+                        colors={[gradients.brand[0], gradients.brand[2]] as [string, string]}
+                        style={styles.cardName}
+                      >
+                        {char.name}
+                      </GradientText>
+                      <SystemText dim style={styles.cardTitle}>{char.title}</SystemText>
+                    </View>
+                  </LinearGradient>
+                ) : (
+                  <View style={[styles.card, styles.cardNormal]}>
+                    <Text style={styles.cardIcon}>{icon}</Text>
+                    <Text style={styles.cardNameDim}>{char.name}</Text>
+                    <SystemText dim style={styles.cardTitle}>{char.title}</SystemText>
+                  </View>
+                )}
+              </Pressable>
+            );
+          })}
+        </Animated.View>
+
+        {/* Detalle del personaje seleccionado */}
         {selected ? (
-          <SystemPanel>
-            <SystemTitle style={{ marginBottom: spacing.md }}>{selected.name}</SystemTitle>
-            <Text style={styles.description}>{selected.description_es}</Text>
-
-            <View style={styles.statsGrid}>
-              <View style={styles.stat}>
-                <Text style={styles.statLabel}>STR</Text>
-                <Text style={styles.statValue}>{selected.attributes.str}/10</Text>
-              </View>
-              <View style={styles.stat}>
-                <Text style={styles.statLabel}>AGI</Text>
-                <Text style={styles.statValue}>{selected.attributes.agi}/10</Text>
-              </View>
-              <View style={styles.stat}>
-                <Text style={styles.statLabel}>VIT</Text>
-                <Text style={styles.statValue}>{selected.attributes.vit}/10</Text>
-              </View>
-              <View style={styles.stat}>
-                <Text style={styles.statLabel}>STA</Text>
-                <Text style={styles.statValue}>{selected.attributes.sta}/10</Text>
-              </View>
-            </View>
-
-            <SystemText style={{ marginTop: spacing.lg }}>Enfoque de Entrenamientos:</SystemText>
-            <View style={styles.biasRow}>
-              <View style={styles.biasItem}>
-                <Text style={styles.biasLabel}>Fuerza</Text>
-                <View style={styles.biasBar}>
-                  <View
-                    style={[
-                      styles.biasProgress,
-                      { width: `${selected.routine_bias.strength * 100}%`, backgroundColor: colors.danger },
-                    ]}
-                  />
+          <Animated.View entering={FadeInDown.delay(0).springify()} key={selected.id}>
+            <SystemWindowPanel style={styles.detailCard}>
+              {/* Cabecera */}
+              <View style={styles.detailHeader}>
+                <View style={{ flex: 1 }}>
+                  <GradientText style={styles.detailName}>{selected.name}</GradientText>
+                  <SystemText dim style={{ fontSize: 13, marginTop: 4 }}>{selected.title}</SystemText>
+                </View>
+                <View style={styles.statsGrid}>
+                  {Object.entries(selected.attributes).map(([k, v]) => (
+                    <View key={k} style={styles.statCell}>
+                      <Text style={styles.statLabel}>{k.toUpperCase()}</Text>
+                      <Text style={styles.statValue}>{v}</Text>
+                    </View>
+                  ))}
                 </View>
               </View>
-              <View style={styles.biasItem}>
-                <Text style={styles.biasLabel}>Cardio</Text>
-                <View style={styles.biasBar}>
-                  <View
-                    style={[
-                      styles.biasProgress,
-                      { width: `${selected.routine_bias.cardio * 100}%`, backgroundColor: colors.warning },
-                    ]}
-                  />
-                </View>
-              </View>
-              <View style={styles.biasItem}>
-                <Text style={styles.biasLabel}>Flex</Text>
-                <View style={styles.biasBar}>
-                  <View
-                    style={[
-                      styles.biasProgress,
-                      { width: `${selected.routine_bias.flexibility * 100}%`, backgroundColor: colors.success },
-                    ]}
-                  />
-                </View>
-              </View>
-            </View>
-          </SystemPanel>
-        ) : null}
 
-        <SystemPanel>
-          <SystemButton
-            title="CONFIRMAR PERSONAJE"
-            disabled={!selectedId || updateProfile.isPending}
-            loading={updateProfile.isPending}
-            onPress={handleSelect}
-          />
-        </SystemPanel>
+              <SystemText dim style={{ fontSize: 14, lineHeight: 22 }}>
+                {selected.description_es}
+              </SystemText>
+
+              {/* Barras de enfoque */}
+              <View style={styles.biasSection}>
+                <SystemText style={styles.biasTitle}>Enfoque de entrenamiento</SystemText>
+                {[
+                  { label: 'Fuerza', val: selected.routine_bias.strength, color: colors.danger },
+                  { label: 'Cardio', val: selected.routine_bias.cardio, color: colors.warning },
+                  { label: 'Flex', val: selected.routine_bias.flexibility, color: colors.success },
+                ].map(({ label, val, color }) => (
+                  <View key={label} style={styles.biasRow}>
+                    <SystemText dim style={styles.biasLabel}>{label}</SystemText>
+                    <View style={{ flex: 1 }}>
+                      <ProgressBar progress={val} color={color} height={5} />
+                    </View>
+                    <SystemText dim style={{ fontSize: 11, width: 28, textAlign: 'right' }}>
+                      {Math.round(val * 100)}%
+                    </SystemText>
+                  </View>
+                ))}
+              </View>
+            </SystemWindowPanel>
+          </Animated.View>
+        ) : (
+          <Animated.View entering={FadeInDown.delay(120).springify()}>
+            <SystemPanel style={styles.emptyHint}>
+              <SystemText dim style={{ textAlign: 'center', fontSize: 14 }}>
+                Toca un cazador para ver sus atributos
+              </SystemText>
+            </SystemPanel>
+          </Animated.View>
+        )}
+
+        <SystemButton
+          title={selectedId ? 'Confirmar personaje →' : 'Elige un personaje'}
+          variant={selectedId ? 'gradient' : 'ghost'}
+          disabled={!selectedId || updateProfile.isPending}
+          loading={updateProfile.isPending}
+          onPress={handleConfirm}
+        />
+
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  scroll: { padding: spacing.md, paddingTop: spacing.lg },
-  header: { marginBottom: spacing.lg },
-  carousel: { marginBottom: spacing.lg, height: 250 },
+  root: { flex: 1, backgroundColor: colors.bg },
+  scroll: { padding: spacing.lg, paddingTop: spacing.xl, gap: spacing.lg, paddingBottom: 60 },
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+  header: { gap: spacing.sm },
+  title: { fontSize: 42, lineHeight: 46, fontWeight: '900' },
+
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  gridCell: { width: '48.5%' },
+
+  cardBorder: { borderRadius: radius.lg + 2, padding: 1.5 },
   card: {
-    width: CARD_WIDTH * 0.7,
-    marginRight: spacing.md,
-    borderRadius: 15,
-    borderWidth: 2,
-    borderColor: colors.panelBorder,
-    backgroundColor: colors.bgElevated,
-    overflow: 'hidden',
+    borderRadius: radius.lg, padding: spacing.md,
+    alignItems: 'center', gap: 6, minHeight: 130,
+    justifyContent: 'center',
   },
-  cardSelected: { borderColor: colors.glow, borderWidth: 3 },
-  cardImage: { width: '100%', height: 180 },
-  cardContent: { padding: spacing.md },
-  cardName: { color: colors.glow, fontSize: 16, fontWeight: '700' },
-  cardTitle: { color: colors.textDim, fontSize: 13, marginTop: 4 },
-  description: { color: colors.text, fontSize: 14, lineHeight: 20, marginBottom: spacing.lg },
-  statsGrid: { flexDirection: 'row', justifyContent: 'space-around', marginVertical: spacing.lg },
-  stat: { alignItems: 'center' },
-  statLabel: { color: colors.textDim, fontSize: 11, fontWeight: '700', marginBottom: 4 },
-  statValue: { color: colors.glow, fontSize: 16, fontWeight: '800' },
-  biasRow: { marginTop: spacing.md },
-  biasItem: { marginBottom: spacing.md },
-  biasLabel: { color: colors.textDim, fontSize: 12, marginBottom: 4, fontWeight: '600' },
-  biasBar: { height: 6, backgroundColor: colors.bgElevated, borderRadius: 3, overflow: 'hidden' },
-  biasProgress: { height: '100%' },
+  cardNormal: {
+    backgroundColor: colors.bgElevated,
+    borderWidth: 1, borderColor: colors.panelBorder,
+  },
+  cardSelected: { backgroundColor: colors.panel },
+  cardIcon: { fontSize: 28, marginBottom: 4 },
+  cardName: { fontSize: 15, fontWeight: '800', textAlign: 'center', lineHeight: 18 },
+  cardNameDim: { fontSize: 15, fontWeight: '800', color: colors.text, textAlign: 'center' },
+  cardTitle: { fontSize: 11, textAlign: 'center' },
+
+  detailCard: { gap: spacing.md },
+  detailHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  detailName: { fontSize: 26, fontWeight: '900', lineHeight: 30 },
+
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, width: 96 },
+  statCell: {
+    width: 42, alignItems: 'center',
+    backgroundColor: colors.bgElevated,
+    borderRadius: radius.sm, paddingVertical: 6,
+  },
+  statLabel: { fontSize: 9, color: colors.textFaint, letterSpacing: 1, textTransform: 'uppercase' },
+  statValue: { fontSize: 16, fontWeight: '900', color: colors.glow },
+
+  biasSection: { gap: 8 },
+  biasTitle: { fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: colors.textFaint, marginBottom: 4 },
+  biasRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  biasLabel: { fontSize: 12, width: 40 },
+
+  emptyHint: { paddingVertical: spacing.xl },
 });

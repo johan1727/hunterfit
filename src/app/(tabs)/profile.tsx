@@ -1,9 +1,18 @@
-import { View, ScrollView, StyleSheet, SafeAreaView, Text } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, ScrollView, StyleSheet, SafeAreaView, Text, TextInput, Alert, Pressable } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
 import { useHunterData } from '../../hooks/useHunterData';
 import { useDemoStore } from '../../lib/demoStore';
+import { useWeightHistory, useLogWeight, useWeeklyCalories, useUpdateProfile } from '../../hooks/useData';
+import {
+  requestNotificationPermission,
+  scheduleMealReminders,
+  cancelMealReminders,
+  getRemindersEnabled,
+} from '../../services/notifications';
 import { colors, gradients, radius, rankColors, spacing } from '../../theme/system';
 import {
   AuroraBackground, GradientText, Pill, ProgressBar,
@@ -13,10 +22,66 @@ import { nextRankInfo } from '../../constants/game';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { profile, character, isDemo } = useHunterData();
+  const { profile, character, isDemo, userId } = useHunterData();
   const exitDemo = useDemoStore((s) => s.exitDemo);
+  const weightHistory = useWeightHistory(isDemo ? null : userId);
+  const logWeight = useLogWeight(isDemo ? null : userId);
+  const weeklyCalories = useWeeklyCalories(isDemo ? null : userId);
+  const [weightInput, setWeightInput] = useState('');
+  const [savingWeight, setSavingWeight] = useState(false);
+  const [remindersOn, setRemindersOn] = useState<boolean | null>(null);
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [usernameInput, setUsernameInput] = useState('');
+  const [savingUsername, setSavingUsername] = useState(false);
+  const updateProfile = useUpdateProfile(isDemo ? null : userId);
 
-  if (!profile) return null;
+  useEffect(() => {
+    getRemindersEnabled().then(setRemindersOn);
+  }, []);
+
+  async function toggleReminders() {
+    if (remindersOn) {
+      await cancelMealReminders();
+      setRemindersOn(false);
+    } else {
+      const granted = await requestNotificationPermission();
+      if (!granted) {
+        Alert.alert('Permisos', 'Activa las notificaciones en los ajustes del sistema');
+        return;
+      }
+      await scheduleMealReminders();
+      setRemindersOn(true);
+    }
+  }
+
+  async function handleSaveWeight() {
+    const val = parseFloat(weightInput.replace(',', '.'));
+    if (isNaN(val) || val < 20 || val > 300) {
+      Alert.alert('Peso inválido', 'Ingresa un peso entre 20 y 300 kg');
+      return;
+    }
+    setSavingWeight(true);
+    try {
+      await logWeight.mutateAsync(val);
+      setWeightInput('');
+    } catch {
+      Alert.alert('Error', 'No se pudo guardar el peso');
+    } finally {
+      setSavingWeight(false);
+    }
+  }
+
+  if (!profile) {
+    return (
+      <SafeAreaView style={styles.root}>
+        <AuroraBackground />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <GradientText style={{ fontSize: 22 }}>Perfil</GradientText>
+          <SystemText dim style={{ marginTop: 8 }}>Cargando…</SystemText>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const rankInfo = nextRankInfo(profile.xp);
 
@@ -26,6 +91,20 @@ export default function ProfileScreen() {
     vit: Math.min(10, Math.floor(profile.level / 5) + 2),
     sta: Math.min(10, Math.floor(profile.level / 5) + 1 + (profile.training_days_per_week > 3 ? 1 : 0)),
   };
+
+  async function handleSaveUsername() {
+    const val = usernameInput.trim();
+    if (!val || val.length < 2) return;
+    setSavingUsername(true);
+    try {
+      await updateProfile.mutateAsync({ username: val } as any);
+      setEditingUsername(false);
+    } catch {
+      Alert.alert('Error', 'No se pudo guardar el nombre');
+    } finally {
+      setSavingUsername(false);
+    }
+  }
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -43,6 +122,7 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Status Window — el panel hero */}
+        <Animated.View entering={FadeInDown.delay(60).springify()}>
         <SystemWindowPanel>
           {/* Cabecera */}
           <View style={styles.heroRow}>
@@ -67,8 +147,10 @@ export default function ProfileScreen() {
             <ProgressBar progress={rankInfo.progress} color={rankColors[rankInfo.current]} height={6} />
           </View>
         </SystemWindowPanel>
+        </Animated.View>
 
         {/* Stats RPG */}
+        <Animated.View entering={FadeInDown.delay(140).springify()}>
         <SystemPanel>
           <SystemText style={styles.sectionLabel}>Estadísticas</SystemText>
           <View style={styles.statsGrid}>
@@ -77,9 +159,11 @@ export default function ProfileScreen() {
             ))}
           </View>
         </SystemPanel>
+        </Animated.View>
 
         {/* Personaje */}
         {character && (
+          <Animated.View entering={FadeInDown.delay(220).springify()}>
           <SystemPanel style={styles.charCard}>
             <SystemText style={styles.sectionLabel}>Compañero activo</SystemText>
             <View style={styles.charRow}>
@@ -97,9 +181,11 @@ export default function ProfileScreen() {
               </View>
             </View>
           </SystemPanel>
+          </Animated.View>
         )}
 
         {/* Info */}
+        <Animated.View entering={FadeInDown.delay(300).springify()}>
         <SystemPanel>
           <SystemText style={styles.sectionLabel}>Información</SystemText>
           <InfoRow label="Objetivo" value={goalLabel[profile.goal ?? ''] ?? profile.goal ?? '—'} />
@@ -109,8 +195,56 @@ export default function ProfileScreen() {
           <InfoRow label="Peso" value={`${profile.weight_kg ?? '—'} kg`} />
           <InfoRow label="Meta calórica" value={`${profile.calorie_target ?? '—'} kcal`} />
         </SystemPanel>
+        </Animated.View>
+
+        {/* Gráfica semanal de calorías */}
+        {!isDemo && (weeklyCalories.data?.some((d) => d.kcal > 0) ?? false) && (
+          <Animated.View entering={FadeInDown.delay(350).springify()}>
+            <WeeklyNutritionPanel data={weeklyCalories.data ?? []} profile={profile} />
+          </Animated.View>
+        )}
+
+        {/* Historial de peso */}
+        {!isDemo && (
+          <Animated.View entering={FadeInDown.delay(360).springify()}>
+            <SystemPanel style={{ gap: spacing.md }}>
+              <SystemText style={styles.sectionLabel}>Progreso de peso</SystemText>
+              {weightHistory.data && weightHistory.data.length > 1 && (
+                <WeightSparkline data={weightHistory.data} />
+              )}
+              {weightHistory.data && weightHistory.data.length > 0 && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <SystemText dim style={{ fontSize: 12 }}>
+                    Inicio: {weightHistory.data[0].weight_kg} kg
+                  </SystemText>
+                  <SystemText dim style={{ fontSize: 12 }}>
+                    Actual: {weightHistory.data[weightHistory.data.length - 1].weight_kg} kg
+                  </SystemText>
+                </View>
+              )}
+              <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
+                <TextInput
+                  style={styles.weightInput}
+                  placeholder="Ej: 72.5"
+                  placeholderTextColor={colors.textFaint}
+                  keyboardType="decimal-pad"
+                  value={weightInput}
+                  onChangeText={setWeightInput}
+                />
+                <Pressable
+                  onPress={handleSaveWeight}
+                  disabled={savingWeight || !weightInput}
+                  style={({ pressed }) => [styles.weightSaveBtn, pressed && { opacity: 0.7 }]}
+                >
+                  <Text style={styles.weightSaveBtnText}>{savingWeight ? '…' : 'Guardar'}</Text>
+                </Pressable>
+              </View>
+            </SystemPanel>
+          </Animated.View>
+        )}
 
         {/* Acciones */}
+        <Animated.View entering={FadeInDown.delay(380).springify()} style={{ gap: spacing.sm }}>
         {isDemo ? (
           <LinearGradient
             colors={['rgba(91,124,255,0.15)', 'rgba(192,132,252,0.10)']}
@@ -126,8 +260,87 @@ export default function ProfileScreen() {
             <SystemButton title="Crear cuenta" variant="gradient" onPress={exitDemo} />
           </LinearGradient>
         ) : (
-          <SystemButton title="Cerrar sesión" variant="danger" onPress={handleLogout} />
+          <>
+            {!profile?.is_premium && (
+              <SystemButton
+                title="👑  Obtener Hunter Pro — Oferta limitada"
+                variant="gradient"
+                onPress={() => router.push('/premium/upgrade' as any)}
+              />
+            )}
+            <SystemButton
+              title="🏅  Mis logros"
+              variant="ghost"
+              onPress={() => router.push('/profile/badges' as any)}
+            />
+            <SystemButton
+              title="🏆  Leaderboard global"
+              variant="ghost"
+              onPress={() => router.push('/social/leaderboard' as any)}
+            />
+            <SystemButton
+              title="❤️  Salud y pasos"
+              variant="ghost"
+              onPress={() => router.push('/profile/health' as any)}
+            />
+            <SystemButton
+              title="📷  Fotos de progreso"
+              variant="ghost"
+              onPress={() => router.push('/profile/photos')}
+            />
+            {editingUsername ? (
+              <View style={styles.usernameRow}>
+                <TextInput
+                  style={styles.usernameInput}
+                  value={usernameInput}
+                  onChangeText={setUsernameInput}
+                  placeholder="Tu nombre de cazador"
+                  placeholderTextColor={colors.textFaint}
+                  maxLength={24}
+                  autoFocus
+                  autoCapitalize="none"
+                  returnKeyType="done"
+                  onSubmitEditing={handleSaveUsername}
+                />
+                <Pressable
+                  onPress={handleSaveUsername}
+                  disabled={savingUsername || usernameInput.trim().length < 2}
+                  style={[styles.usernameBtn, (savingUsername || usernameInput.trim().length < 2) && { opacity: 0.4 }]}
+                >
+                  <Text style={styles.usernameBtnText}>{savingUsername ? '…' : '✓'}</Text>
+                </Pressable>
+                <Pressable onPress={() => setEditingUsername(false)} style={styles.usernameCancelBtn}>
+                  <Text style={styles.usernameBtnText}>✕</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <SystemButton
+                title={`✏️  Nombre: ${profile.username || 'Sin nombre'}`}
+                variant="ghost"
+                onPress={() => { setUsernameInput(profile.username ?? ''); setEditingUsername(true); }}
+              />
+            )}
+            <SystemButton
+              title="⚙️  Editar mis datos"
+              variant="ghost"
+              onPress={() => router.push('/onboarding/quiz?from=profile')}
+            />
+            <SystemButton
+              title="⚔️  Cambiar personaje"
+              variant="ghost"
+              onPress={() => router.push('/onboarding/character-select')}
+            />
+            {remindersOn !== null && (
+              <SystemButton
+                title={remindersOn ? '🔔  Recordatorios ON · Desactivar' : '🔕  Recordatorios OFF · Activar'}
+                variant="ghost"
+                onPress={toggleReminders}
+              />
+            )}
+            <SystemButton title="Cerrar sesión" variant="danger" onPress={handleLogout} />
+          </>
         )}
+        </Animated.View>
 
       </ScrollView>
     </SafeAreaView>
@@ -172,6 +385,149 @@ const infoStyles = StyleSheet.create({
   value: { color: colors.text, fontSize: 13, fontWeight: '600', textTransform: 'capitalize' },
 });
 
+type Metric = 'kcal' | 'protein_g' | 'carbs_g' | 'fat_g';
+
+const METRIC_CONFIG: Record<Metric, { label: string; unit: string; color: string; targetKey: keyof typeof METRIC_TARGETS_FALLBACK }> = {
+  kcal:      { label: 'Kcal',     unit: 'kcal', color: gradients.brand[1], targetKey: 'kcal' },
+  protein_g: { label: 'Proteína', unit: 'g',    color: colors.danger,      targetKey: 'protein_g' },
+  carbs_g:   { label: 'Carbos',   unit: 'g',    color: colors.warning,     targetKey: 'carbs_g' },
+  fat_g:     { label: 'Grasas',   unit: 'g',    color: colors.accent,      targetKey: 'fat_g' },
+};
+const METRIC_TARGETS_FALLBACK = { kcal: 2000, protein_g: 150, carbs_g: 200, fat_g: 65 };
+
+type DayNutrition = { date: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number };
+
+function WeeklyNutritionPanel({ data, profile }: { data: DayNutrition[]; profile: any }) {
+  const [metric, setMetric] = useState<Metric>('kcal');
+  const DAY_LABELS = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+  const cfg = METRIC_CONFIG[metric];
+  const target = profile[cfg.targetKey] ?? METRIC_TARGETS_FALLBACK[cfg.targetKey];
+  const values = data.map((d) => d[metric]);
+  const maxVal = Math.max(target * 1.2, ...values);
+  const avg = Math.round(values.reduce((s, v) => s + v, 0) / 7);
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  return (
+    <SystemPanel style={{ gap: spacing.md }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <SystemText style={styles.sectionLabel}>Progreso semanal</SystemText>
+        <SystemText dim style={{ fontSize: 12 }}>
+          prom. {avg}{cfg.unit === 'kcal' ? ' kcal' : `g ${cfg.label.toLowerCase()}`}/día
+        </SystemText>
+      </View>
+
+      {/* Selector de métrica */}
+      <View style={{ flexDirection: 'row', gap: 6 }}>
+        {(Object.keys(METRIC_CONFIG) as Metric[]).map((m) => {
+          const active = m === metric;
+          const c = METRIC_CONFIG[m];
+          return (
+            <Pressable
+              key={m}
+              onPress={() => setMetric(m)}
+              style={[
+                styles.metricTab,
+                active && { borderColor: c.color + '80', backgroundColor: c.color + '18' },
+              ]}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '700', color: active ? c.color : colors.textFaint }}>
+                {c.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {/* Barras */}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6, height: 72 }}>
+        {data.map((day) => {
+          const val = day[metric];
+          const pct = maxVal > 0 ? val / maxVal : 0;
+          const barH = Math.max(4, Math.round(pct * 60));
+          const overTarget = val > target;
+          const dateObj = new Date(day.date + 'T12:00:00');
+          const label = DAY_LABELS[dateObj.getDay()];
+          const isToday = day.date === todayStr;
+
+          return (
+            <View key={day.date} style={{ flex: 1, alignItems: 'center', gap: 4 }}>
+              {val > 0 && (
+                <Text style={{ color: colors.textFaint, fontSize: 9 }}>
+                  {metric === 'kcal' && val >= 1000 ? `${(val / 1000).toFixed(1)}k` : Math.round(val)}
+                </Text>
+              )}
+              <LinearGradient
+                colors={overTarget ? [colors.danger, colors.warning] : [cfg.color + 'CC', cfg.color]}
+                start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+                style={{ width: '100%', height: barH, borderRadius: 4, opacity: val === 0 ? 0.15 : 1 }}
+              />
+              <Text style={{ fontSize: 10, fontWeight: isToday ? '900' : '600', color: isToday ? colors.text : colors.textFaint }}>
+                {label}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    </SystemPanel>
+  );
+}
+
+function WeightSparkline({ data }: { data: Array<{ date: string; weight_kg: number }> }) {
+  const W = 260;
+  const H = 48;
+  if (data.length < 2) return null;
+  const values = data.map((d) => d.weight_kg);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const pts = data.map((d, i) => {
+    const x = (i / (data.length - 1)) * W;
+    const y = H - ((d.weight_kg - min) / range) * H;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+
+  // Simple SVG-like using absolute positioned Views
+  const dots = data.map((d, i) => {
+    const x = (i / (data.length - 1)) * W;
+    const y = H - ((d.weight_kg - min) / range) * H;
+    return { x, y, v: d.weight_kg };
+  });
+
+  return (
+    <View style={{ height: H + 12, position: 'relative', marginBottom: 4 }}>
+      {dots.slice(0, -1).map((dot, i) => {
+        const next = dots[i + 1];
+        const dx = next.x - dot.x;
+        const dy = next.y - dot.y;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+        return (
+          <View
+            key={i}
+            style={{
+              position: 'absolute', left: dot.x, top: dot.y,
+              width: len, height: 2,
+              backgroundColor: gradients.brand[1] + '80',
+              transformOrigin: 'left center',
+              transform: [{ rotate: `${angle}deg` }],
+            }}
+          />
+        );
+      })}
+      {dots.map((dot, i) => (
+        <View
+          key={i}
+          style={{
+            position: 'absolute', left: dot.x - 3, top: dot.y - 3,
+            width: 6, height: 6, borderRadius: 3,
+            backgroundColor: i === dots.length - 1 ? gradients.brand[0] : gradients.brand[1] + '99',
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: spacing.md, paddingTop: spacing.lg, gap: spacing.md, paddingBottom: 100 },
@@ -190,4 +546,41 @@ const styles = StyleSheet.create({
   attrItem: { alignItems: 'center', width: 40 },
 
   demoBanner: { borderRadius: radius.lg, padding: spacing.lg, borderWidth: 1, borderColor: colors.panelBorder },
+
+  metricTab: {
+    flex: 1, paddingVertical: 6, alignItems: 'center', borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.panelBorder, backgroundColor: colors.bgElevated,
+  },
+
+  weightInput: {
+    flex: 1, backgroundColor: colors.bgElevated, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.panelBorder,
+    color: colors.text, fontSize: 15, fontWeight: '600',
+    paddingHorizontal: spacing.md, paddingVertical: 10,
+  },
+  weightSaveBtn: {
+    backgroundColor: gradients.brand[1] + '30',
+    borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 10,
+    borderWidth: 1, borderColor: gradients.brand[1] + '60',
+  },
+  weightSaveBtnText: { color: gradients.brand[1], fontWeight: '800', fontSize: 14 },
+
+  usernameRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  usernameInput: {
+    flex: 1, backgroundColor: colors.bgElevated, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.panelBorder,
+    color: colors.text, fontSize: 15, fontWeight: '700',
+    paddingHorizontal: spacing.md, paddingVertical: 10,
+  },
+  usernameBtn: {
+    backgroundColor: gradients.brand[0] + '30',
+    borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 10,
+    borderWidth: 1, borderColor: gradients.brand[0] + '60',
+  },
+  usernameCancelBtn: {
+    backgroundColor: colors.bgElevated,
+    borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 10,
+    borderWidth: 1, borderColor: colors.panelBorder,
+  },
+  usernameBtnText: { color: colors.text, fontWeight: '800', fontSize: 16 },
 });

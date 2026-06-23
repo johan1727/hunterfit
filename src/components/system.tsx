@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
+import * as Haptics from 'expo-haptics';
 import { colors, gradients, panel, radius, rankColors, spacing } from '../theme/system';
 import type { HunterRank } from '../types/db';
 
@@ -143,6 +144,7 @@ export function SystemButton({ title, variant = 'primary', loading, disabled, st
   return (
     <Pressable
       disabled={disabled || loading}
+      onPressIn={() => { if (!disabled && !loading) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
       style={({ pressed }) => [
         (pressed || disabled || loading) && { opacity: 0.65 },
         style as object,

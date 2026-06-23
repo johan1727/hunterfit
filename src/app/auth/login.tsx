@@ -1,20 +1,10 @@
-/**
- * ANCHOR: Aurora Maximalism
- * Por qué no Industrial (el safe default para fitness): Industrial produce otra app
- * oscura con mono y un color semáforo. Aurora convierte el login en un evento —
- * la "ventana del Sistema" de Solo Leveling materializándose del vacío.
- *
- * DIFFERENTIATOR: El panel central tiene borde de gradiente vivo (1.5 px LinearGradient
- * wrap azul→violeta→rosa). Solo este panel lo tiene. El resto de la pantalla es
- * negro puro. El ojo va ahí primero, igual que en el juego donde el cuadro azul
- * aparece de la nada frente al protagonista.
- */
 import { useState } from 'react';
-import { View, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { supabase } from '../../lib/supabase';
 import { useDemoStore } from '../../lib/demoStore';
-import { colors, gradients, radius, spacing } from '../../theme/system';
+import { colors, gradients, spacing, radius } from '../../theme/system';
 import {
   AuroraBackground,
   GradientText,
@@ -27,6 +17,15 @@ import {
 } from '../../components/system';
 import { Text as RNText } from 'react-native';
 
+WebBrowser.maybeCompleteAuthSession();
+
+function getRedirectTo() {
+  if (Platform.OS === 'web') {
+    return `${window.location.origin}/auth/callback`;
+  }
+  return 'hunterfit://auth/callback';
+}
+
 export default function LoginScreen() {
   const router = useRouter();
   const enterDemo = useDemoStore((s) => s.enterDemo);
@@ -34,6 +33,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
 
   async function handleLogin() {
@@ -44,6 +44,44 @@ export default function LoginScreen() {
     if (err) setError(err.message);
   }
 
+  async function handleGoogleLogin() {
+    setError('');
+    setGoogleLoading(true);
+    try {
+      const redirectTo = getRedirectTo();
+
+      if (Platform.OS === 'web') {
+        await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo },
+        });
+        return; // página redirige, no hay más código que ejecutar
+      }
+
+      // Native: abrir en browser nativo
+      const { data, error: oauthErr } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo, skipBrowserRedirect: true },
+      });
+      if (oauthErr) throw oauthErr;
+      if (!data.url) return;
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+      if (result.type === 'success' && 'url' in result) {
+        await supabase.auth.exchangeCodeForSession(result.url);
+      }
+    } catch (err: any) {
+      setError(err.message ?? 'Error al iniciar con Google');
+    } finally {
+      setGoogleLoading(false);
+    }
+  }
+
+  function handleDemo() {
+    enterDemo();
+    router.replace('/(tabs)/home');
+  }
+
   return (
     <SafeAreaView style={styles.root}>
       <AuroraBackground />
@@ -52,22 +90,41 @@ export default function LoginScreen() {
         style={styles.center}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Logo / nombre */}
+        {/* Logo */}
         <View style={styles.logo}>
           <Pill dotColor={gradients.brand[0]}>Sistema de cazadores</Pill>
           <GradientText style={styles.appName}>Hunter{'\n'}Fit</GradientText>
         </View>
 
-        {/* System Window Panel — el differentiator Aurora */}
+        {/* Panel principal */}
         <SystemWindowPanel style={styles.card}>
           <SystemText dim style={styles.cardEyebrow}>Acceso al Sistema</SystemText>
+
+          {/* Google */}
+          <Pressable
+            style={({ pressed }) => [styles.googleBtn, pressed && { opacity: 0.8 }]}
+            onPress={handleGoogleLogin}
+            disabled={googleLoading || loading}
+          >
+            <SystemText style={styles.googleIcon}>G</SystemText>
+            <SystemText style={styles.googleLabel}>
+              {googleLoading ? 'Conectando…' : 'Continuar con Google'}
+            </SystemText>
+          </Pressable>
+
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <SystemText dim style={styles.dividerText}>o con email</SystemText>
+            <View style={styles.dividerLine} />
+          </View>
 
           <SystemLabel>Correo</SystemLabel>
           <SystemInput
             placeholder="tu@email.com"
             value={email}
             onChangeText={setEmail}
-            editable={!loading}
+            editable={!loading && !googleLoading}
             keyboardType="email-address"
             autoCapitalize="none"
           />
@@ -78,7 +135,7 @@ export default function LoginScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            editable={!loading}
+            editable={!loading && !googleLoading}
           />
 
           {error ? (
@@ -91,6 +148,7 @@ export default function LoginScreen() {
             title="Entrar"
             variant="gradient"
             loading={loading}
+            disabled={googleLoading}
             onPress={handleLogin}
             style={{ marginTop: spacing.lg }}
           />
@@ -98,15 +156,15 @@ export default function LoginScreen() {
           <SystemButton
             title="Crear cuenta"
             variant="ghost"
-            disabled={loading}
+            disabled={loading || googleLoading}
             onPress={() => router.push('/auth/signup')}
           />
         </SystemWindowPanel>
 
-        {/* Demo — sin cuenta */}
+        {/* Demo */}
         <View style={styles.demoRow}>
           <SystemText dim style={{ fontSize: 13 }}>¿Solo quieres explorar?  </SystemText>
-          <RNText style={{ fontSize: 13, color: colors.glow }} onPress={enterDemo}>
+          <RNText style={{ fontSize: 13, color: colors.glow }} onPress={handleDemo}>
             Entrar sin cuenta →
           </RNText>
         </View>
@@ -125,8 +183,37 @@ const styles = StyleSheet.create({
   },
   logo: { gap: spacing.md },
   appName: { fontSize: 56, lineHeight: 58, fontWeight: '900' },
-  cardEyebrow: { fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: spacing.lg },
+  cardEyebrow: { fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: spacing.md },
   card: { gap: 0 },
+
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.bgElevated,
+    borderWidth: 1,
+    borderColor: colors.panelBorder,
+    borderRadius: radius.pill,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.lg,
+  },
+  googleIcon: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#4285F4',
+  },
+  googleLabel: { fontSize: 15, fontWeight: '600', color: colors.text },
+
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginVertical: spacing.md,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.panelBorder },
+  dividerText: { fontSize: 12 },
+
   demoRow: {
     flexDirection: 'row',
     justifyContent: 'center',

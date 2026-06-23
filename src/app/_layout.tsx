@@ -1,10 +1,14 @@
 import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useData';
 import { useDemoStore } from '../lib/demoStore';
+import { useLevelUpStore } from '../lib/levelUpStore';
+import { LevelUpModal } from '../components/LevelUpModal';
+import { BadgeToast } from '../components/BadgeToast';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -15,17 +19,36 @@ const queryClient = new QueryClient({
 export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
+      <StatusBar style="light" />
       <RootNavigator />
+      <LevelUpOverlay />
+      <BadgeToast />
     </QueryClientProvider>
   );
 }
 
+function LevelUpOverlay() {
+  const pendingLevel = useLevelUpStore((s) => s.pendingLevel);
+  const dismiss = useLevelUpStore((s) => s.dismissLevelUp);
+  return (
+    <LevelUpModal
+      visible={pendingLevel !== null}
+      level={pendingLevel ?? 0}
+      onClose={dismiss}
+    />
+  );
+}
+
 function RootNavigator() {
+  const router = useRouter();
   const isDemo = useDemoStore((s) => s.isDemo);
   const { session, loading: authLoading } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile(
     isDemo ? null : (session?.user?.id ?? null),
   );
+
+  const isLoggedIn = !!session;
+  const onboardingComplete = profile?.onboarding_complete ?? false;
 
   useEffect(() => {
     if (isDemo || (!authLoading && !profileLoading)) {
@@ -33,42 +56,43 @@ function RootNavigator() {
     }
   }, [isDemo, authLoading, profileLoading]);
 
-  // Modo demo: saltar directo a tabs con datos mock
-  if (isDemo) {
-    return (
-      <Stack screenOptions={{ headerShown: false }}>
-        {[
-          <Stack.Screen key="tabs" name="(tabs)" />,
-          <Stack.Screen key="workout" name="workout/[id]" />,
-          <Stack.Screen key="nutrition-search" name="nutrition/search" />,
-          <Stack.Screen key="nutrition-add" name="nutrition/add" />,
-          <Stack.Screen key="nutrition-edit" name="nutrition/edit/[id]" />,
-        ]}
-      </Stack>
-    );
-  }
+  // Redirect una vez que sabemos el estado del usuario
+  useEffect(() => {
+    if (authLoading || profileLoading || isDemo) return;
+    if (!isLoggedIn) {
+      router.replace('/auth/login');
+    } else if (!onboardingComplete) {
+      router.replace('/onboarding/quiz');
+    } else {
+      router.replace('/(tabs)/home');
+    }
+  }, [authLoading, profileLoading, isLoggedIn, onboardingComplete, isDemo]);
 
-  const isLoggedIn = !!session;
-  const onboardingComplete = profile?.onboarding_complete ?? false;
-
-  const screens = !isLoggedIn
-    ? [
-        <Stack.Screen key="login" name="auth/login" />,
-        <Stack.Screen key="signup" name="auth/signup" />,
-      ]
-    : !onboardingComplete
-      ? [
-          <Stack.Screen key="quiz" name="onboarding/quiz" />,
-          <Stack.Screen key="character-select" name="onboarding/character-select" />,
-          <Stack.Screen key="body-photo" name="onboarding/body-photo" />,
-        ]
-      : [
-          <Stack.Screen key="tabs" name="(tabs)" />,
-          <Stack.Screen key="workout" name="workout/[id]" />,
-          <Stack.Screen key="nutrition-search" name="nutrition/search" />,
-          <Stack.Screen key="nutrition-add" name="nutrition/add" />,
-          <Stack.Screen key="nutrition-edit" name="nutrition/edit/[id]" />,
-        ];
-
-  return <Stack screenOptions={{ headerShown: false }}>{screens}</Stack>;
+  // Todas las pantallas siempre disponibles; los redirects de arriba controlan el flujo
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="auth/login" />
+      <Stack.Screen name="auth/signup" />
+      <Stack.Screen name="auth/callback" />
+      <Stack.Screen name="onboarding/quiz" />
+      <Stack.Screen name="onboarding/character-select" />
+      <Stack.Screen name="onboarding/body-photo" />
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="workout/[id]" />
+      <Stack.Screen name="nutrition/search" />
+      <Stack.Screen name="nutrition/barcode" />
+      <Stack.Screen name="nutrition/macro-calc" />
+      <Stack.Screen name="nutrition/shopping" />
+      <Stack.Screen name="nutrition/meal-plan" />
+      <Stack.Screen name="profile/photos" />
+      <Stack.Screen name="workout/history" />
+      <Stack.Screen name="nutrition/add" />
+      <Stack.Screen name="nutrition/edit/[id]" />
+      <Stack.Screen name="nutrition/recipes" />
+      <Stack.Screen name="profile/health" />
+      <Stack.Screen name="profile/badges" />
+      <Stack.Screen name="social/leaderboard" />
+      <Stack.Screen name="premium/upgrade" />
+    </Stack>
+  );
 }

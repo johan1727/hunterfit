@@ -1,12 +1,17 @@
-import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, Text } from 'react-native';
+import { useState } from 'react';
+import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, Text, Alert } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useHunterData } from '../../hooks/useHunterData';
+import { useWaterToday, useAddWater, useCopyYesterday, useMealLogs } from '../../hooks/useData';
+import { localDateString } from '../../lib/dates';
 import { colors, gradients, radius, spacing } from '../../theme/system';
 import {
   AuroraBackground, GradientText, Pill, ProgressBar,
   SystemPanel, SystemText, SystemButton,
 } from '../../components/system';
+import { FAB } from '../../components/FAB';
 
 const MEAL_LABELS: Record<string, string> = {
   desayuno: 'Desayuno',
@@ -21,11 +26,57 @@ const MACRO_COLORS = {
   fat: colors.accent,
 };
 
+const WATER_GOAL_ML = 2500;
+
+function offsetDate(base: string, days: number): string {
+  const d = new Date(base + 'T12:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
 export default function NutritionScreen() {
   const router = useRouter();
-  const { profile, meals, isDemo } = useHunterData();
+  const { profile, meals: demoMeals, isDemo, userId } = useHunterData();
+  const isRealDemo = isDemo;
+  const today = localDateString();
+  const [selectedDate, setSelectedDate] = useState(today);
+  const isToday = selectedDate === today;
 
-  if (!profile) return null;
+  // Meals para la fecha seleccionada (real) o demo
+  const { data: realMeals = [] } = useMealLogs(isDemo ? null : userId, selectedDate);
+  const meals = isDemo ? demoMeals : realMeals;
+
+  const waterQuery = useWaterToday(isDemo ? null : userId, selectedDate);
+  const addWater = useAddWater(isDemo ? null : userId, selectedDate);
+  const copyYesterday = useCopyYesterday(isDemo ? null : userId, selectedDate);
+  const [copyingYesterday, setCopyingYesterday] = useState(false);
+
+  const waterMl = waterQuery.data ?? 0;
+  const waterPct = Math.min(1, waterMl / WATER_GOAL_ML);
+
+  async function handleCopyYesterday() {
+    setCopyingYesterday(true);
+    try {
+      const n = await copyYesterday.mutateAsync();
+      Alert.alert('¡Listo!', `Se copiaron ${n} alimentos de ayer`);
+    } catch (e: any) {
+      Alert.alert('Sin datos', e?.message ?? 'No hay comidas de ayer para copiar');
+    } finally {
+      setCopyingYesterday(false);
+    }
+  }
+
+  if (!profile) {
+    return (
+      <SafeAreaView style={styles.root}>
+        <AuroraBackground />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <GradientText style={{ fontSize: 22 }}>Nutrición</GradientText>
+          <SystemText dim style={{ marginTop: 8 }}>Cargando…</SystemText>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const targets = {
     kcal: profile.calorie_target ?? 2000,
@@ -51,7 +102,6 @@ export default function NutritionScreen() {
     snack:    meals.filter((m) => m.meal_type === 'snack'),
   };
 
-  const today = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'short' });
 
   return (
     <SafeAreaView style={styles.root}>
@@ -59,17 +109,38 @@ export default function NutritionScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Header */}
-        <View style={styles.header}>
-          <Pill dotColor={colors.warning}>Hoy · {today}</Pill>
+        <Animated.View entering={FadeInDown.delay(0).springify()} style={styles.header}>
           <GradientText
             style={styles.title}
             colors={['#FB7185', '#FBBF24', '#5B7CFF']}
           >
             Nutrición
           </GradientText>
-        </View>
+          {/* Navegación de fechas */}
+          <View style={styles.dateNav}>
+            <Pressable
+              onPress={() => setSelectedDate((d) => offsetDate(d, -1))}
+              style={({ pressed }) => [styles.dateArrow, pressed && { opacity: 0.5 }]}
+            >
+              <Text style={styles.dateArrowText}>‹</Text>
+            </Pressable>
+            <Pressable onPress={() => setSelectedDate(today)} style={styles.datePill}>
+              <Text style={styles.datePillText}>
+                {isToday ? 'Hoy' : new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => !isToday && setSelectedDate((d) => offsetDate(d, 1))}
+              style={({ pressed }) => [styles.dateArrow, pressed && { opacity: 0.5 }, isToday && { opacity: 0.25 }]}
+              disabled={isToday}
+            >
+              <Text style={styles.dateArrowText}>›</Text>
+            </Pressable>
+          </View>
+        </Animated.View>
 
         {/* Hero: calorías */}
+        <Animated.View entering={FadeInDown.delay(80).springify()}>
         <SystemPanel>
           <View style={styles.kcalRow}>
             {/* Círculo */}
@@ -94,25 +165,72 @@ export default function NutritionScreen() {
             </View>
           </View>
         </SystemPanel>
+        </Animated.View>
 
         {/* Macros */}
+        <Animated.View entering={FadeInDown.delay(160).springify()}>
         <SystemPanel>
           <SystemText style={styles.sectionLabel}>Macronutrientes</SystemText>
           <MacroRow label="Proteína" current={totals.protein} target={targets.protein} unit="g" color={MACRO_COLORS.protein} />
           <MacroRow label="Carbohidratos" current={totals.carbs} target={targets.carbs} unit="g" color={MACRO_COLORS.carbs} />
           <MacroRow label="Grasas" current={totals.fat} target={targets.fat} unit="g" color={MACRO_COLORS.fat} />
         </SystemPanel>
+        </Animated.View>
+
+        {/* Agua */}
+        {!isDemo && (
+          <Animated.View entering={FadeInDown.delay(200).springify()}>
+            <SystemPanel style={{ gap: spacing.sm }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <SystemText style={{ fontSize: 13, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', color: colors.textFaint }}>
+                  Hidratación
+                </SystemText>
+                <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '800' }}>
+                  {waterMl} / {WATER_GOAL_ML} ml
+                </Text>
+              </View>
+              <ProgressBar progress={waterPct} color={colors.accent} height={6} />
+              <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: 4 }}>
+                {[150, 250, 350, 500].map((ml) => (
+                  <Pressable
+                    key={ml}
+                    onPress={() => addWater.mutate(ml)}
+                    style={({ pressed }) => [styles.waterBtn, pressed && { opacity: 0.6 }]}
+                  >
+                    <Text style={styles.waterBtnText}>+{ml}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </SystemPanel>
+          </Animated.View>
+        )}
+
+        {/* Copiar de ayer */}
+        {!isDemo && (
+          <Animated.View entering={FadeInDown.delay(220).springify()}>
+            <Pressable
+              onPress={handleCopyYesterday}
+              disabled={copyingYesterday}
+              style={({ pressed }) => [styles.copyYesterdayBtn, pressed && { opacity: 0.6 }]}
+            >
+              <Text style={styles.copyYesterdayText}>
+                {copyingYesterday ? 'Copiando…' : '↩ Copiar comidas de ayer'}
+              </Text>
+            </Pressable>
+          </Animated.View>
+        )}
 
         {/* Comidas por tipo */}
-        {(['desayuno', 'comida', 'cena', 'snack'] as const).map((type) => {
+        {(['desayuno', 'comida', 'cena', 'snack'] as const).map((type, mealIdx) => {
           const typeMeals = mealsByType[type];
           const typeKcal = Math.round(typeMeals.reduce((s, m) => s + m.kcal, 0));
           return (
-            <View key={type} style={styles.mealSection}>
+            <Animated.View key={type} entering={FadeInDown.delay(240 + mealIdx * 70).springify()}>
+            <View style={styles.mealSection}>
               {/* Cabecera de sección */}
               <Pressable
                 style={styles.mealHeader}
-                onPress={() => !isDemo && router.push(`/nutrition/add?type=${type}`)}
+                onPress={() => !isDemo && router.push(`/nutrition/add?type=${type}&date=${selectedDate}`)}
               >
                 <View>
                   <Text style={styles.mealType}>{MEAL_LABELS[type]}</Text>
@@ -150,17 +268,40 @@ export default function NutritionScreen() {
                 <Text style={styles.emptyMeal}>Sin registros</Text>
               )}
             </View>
+            </Animated.View>
           );
         })}
 
-        {/* CTA buscar */}
+        {/* CTA buscar + metas */}
         {!isDemo ? (
-          <SystemButton
-            title="Buscar alimento"
-            variant="gradient"
-            onPress={() => router.push('/nutrition/search')}
-            style={{ marginTop: spacing.sm }}
-          />
+          <>
+            <SystemButton
+              title="Buscar alimento"
+              variant="gradient"
+              onPress={() => router.push(`/nutrition/search?date=${selectedDate}`)}
+              style={{ marginTop: spacing.sm }}
+            />
+            <SystemButton
+              title="📋  Plan de comidas"
+              variant="ghost"
+              onPress={() => router.push('/nutrition/meal-plan')}
+            />
+            <SystemButton
+              title="🛒  Lista de compras"
+              variant="ghost"
+              onPress={() => router.push('/nutrition/shopping')}
+            />
+            <SystemButton
+              title="⚖️  Ajustar metas de macros"
+              variant="ghost"
+              onPress={() => router.push('/nutrition/macro-calc')}
+            />
+            <SystemButton
+              title="🍳  Recetas fit"
+              variant="ghost"
+              onPress={() => router.push('/nutrition/recipes' as any)}
+            />
+          </>
         ) : (
           <SystemPanel style={{ alignItems: 'center', gap: spacing.sm }}>
             <SystemText dim style={{ fontSize: 13, textAlign: 'center' }}>
@@ -170,6 +311,7 @@ export default function NutritionScreen() {
         )}
 
       </ScrollView>
+      {!isRealDemo && <FAB onPress={() => router.push(`/nutrition/search?date=${selectedDate}`)} />}
     </SafeAreaView>
   );
 }
@@ -206,8 +348,26 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: spacing.md, paddingTop: spacing.lg, gap: spacing.sm, paddingBottom: 100 },
 
-  header: { gap: 6, marginBottom: spacing.sm },
+  header: { gap: spacing.sm, marginBottom: spacing.sm },
   title: { fontSize: 38, lineHeight: 40 },
+
+  dateNav: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    alignSelf: 'flex-start',
+  },
+  dateArrow: {
+    width: 32, height: 32, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.bgElevated, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.panelBorder,
+  },
+  dateArrowText: { color: colors.text, fontSize: 20, fontWeight: '300', lineHeight: 24 },
+  datePill: {
+    paddingHorizontal: spacing.md, paddingVertical: 6,
+    backgroundColor: colors.bgElevated, borderRadius: radius.pill,
+    borderWidth: 1, borderColor: colors.panelBorder,
+    minWidth: 100, alignItems: 'center',
+  },
+  datePillText: { color: colors.text, fontSize: 13, fontWeight: '700' },
 
   kcalRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   ringWrap: { flexShrink: 0 },
@@ -243,4 +403,18 @@ const styles = StyleSheet.create({
   mealMacros: { color: colors.textDim, fontSize: 11, marginTop: 3 },
   mealKcal: { color: colors.glow, fontSize: 15, fontWeight: '800' },
   emptyMeal: { color: colors.textFaint, fontSize: 13, padding: spacing.md },
+
+  waterBtn: {
+    flex: 1, backgroundColor: colors.bgElevated,
+    borderRadius: radius.md, paddingVertical: 8,
+    alignItems: 'center', borderWidth: 1, borderColor: colors.panelBorder,
+  },
+  waterBtnText: { color: colors.accent, fontSize: 13, fontWeight: '800' },
+
+  copyYesterdayBtn: {
+    backgroundColor: colors.bgElevated,
+    borderRadius: radius.md, paddingVertical: 10,
+    alignItems: 'center', borderWidth: 1, borderColor: colors.panelBorder,
+  },
+  copyYesterdayText: { color: colors.textDim, fontSize: 13, fontWeight: '600' },
 });

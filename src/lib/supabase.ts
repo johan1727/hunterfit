@@ -31,6 +31,8 @@ export const supabase = createClient(url, anonKey, {
     storage: resolveStorage(),
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    // En web: true para que Supabase procese el code PKCE automáticamente al cargar /auth/callback
+    // En native: false porque usamos WebBrowser.openAuthSessionAsync + exchangeCodeForSession manual
+    detectSessionInUrl: Platform.OS === 'web',
   },
 });
