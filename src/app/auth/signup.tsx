@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { validation } from '../../lib/validation';
 import { colors, gradients, spacing } from '../../theme/system';
 import {
   AuroraBackground, GradientText, Pill,
@@ -15,6 +16,8 @@ export default function SignupScreen() {
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   async function handleSignup() {
     setMsg(null);
@@ -29,6 +32,18 @@ export default function SignupScreen() {
       setMsg({ text: 'Revisa tu correo para confirmar la cuenta', ok: true });
     }
   }
+
+  const handleEmailChange = (text: string) => {
+    setEmail(text);
+    const result = validation.email(text);
+    setEmailError(result.valid ? null : result.error || null);
+  };
+
+  const handlePasswordChange = (text: string) => {
+    setPassword(text);
+    const result = validation.password(text);
+    setPasswordError(result.valid ? null : result.error || null);
+  };
 
   return (
     <SafeAreaView style={styles.root}>
@@ -47,22 +62,24 @@ export default function SignupScreen() {
 
           <SystemLabel>Correo</SystemLabel>
           <SystemInput
-            placeholder="tu@email.com"
+            placeholder="Email"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={handleEmailChange}
             editable={!loading}
             keyboardType="email-address"
             autoCapitalize="none"
           />
+          {emailError && <SystemText style={{ color: colors.danger, fontSize: 12 }}>{emailError}</SystemText>}
 
           <SystemLabel style={{ marginTop: spacing.md }}>Contraseña</SystemLabel>
           <SystemInput
-            placeholder="Mínimo 6 caracteres"
+            placeholder="Contraseña (mín. 8 caracteres)"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={handlePasswordChange}
             secureTextEntry
             editable={!loading}
           />
+          {passwordError && <SystemText style={{ color: colors.danger, fontSize: 12 }}>{passwordError}</SystemText>}
 
           <SystemLabel style={{ marginTop: spacing.md }}>Confirmar contraseña</SystemLabel>
           <SystemInput
