@@ -1,11 +1,30 @@
-import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, SafeAreaView, Text, Pressable, Alert } from 'react-native';
+import React, { useState, useRef } from 'react';
+import {
+  View, ScrollView, StyleSheet, SafeAreaView, Pressable,
+  Alert, TextInput, KeyboardAvoidingView, Platform,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { useAuth } from '../../hooks/useAuth';
+import { useDemoStore } from '../../lib/demoStore';
+import { DEMO_ROUTINES } from '../../lib/demo';
 import { supabase } from '../../lib/supabase';
+import { useNetworkError } from '../../lib/networkError';
 import { completeWorkout } from '../../services/routines';
-import { colors, spacing } from '../../theme/system';
-import { SystemPanel, SystemTitle, SystemText, SystemButton, StatRow } from '../../components/system';
+import { checkAndAwardBadges } from '../../services/badges';
+import { colors, gradients, radius, spacing } from '../../theme/system';
+import {
+  AuroraBackground,
+  GradientText,
+  Pill,
+  SystemPanel,
+  SystemWindowPanel,
+  SystemText,
+  SystemButton,
+  ProgressBar,
+  StatRow,
+} from '../../components/system';
 
 interface ExerciseSession {
   exercise_id: number;
@@ -14,63 +33,117 @@ interface ExerciseSession {
   reps?: number;
   seconds?: number;
   rest_seconds: number;
-  currentSet: number;
   completed: boolean;
+}
+
+interface SetLog {
+  exercise_id: number;
+  set_number: number;
+  reps_done: number | null;
+  weight_kg: number | null;
+  seconds_done: number | null;
+}
+
+function usePersonalRecords(userId: string | null, exerciseId: number | null) {
+  const [pr, setPr] = React.useState<{ max_weight: number | null; max_reps: number | null } | null>(null);
+
+  React.useEffect(() => {
+    if (!userId || !exerciseId) return;
+    supabase
+      .from('workout_sets')
+      .select('weight_kg, reps_done')
+      .eq('user_id', userId)
+      .eq('exercise_id', exerciseId)
+      .order('weight_kg', { ascending: false })
+      .limit(50)
+      .then(({ data }) => {
+        if (!data?.length) return;
+        const maxWeight = Math.max(...data.map((r) => r.weight_kg ?? 0));
+        const maxReps = Math.max(...data.map((r) => r.reps_done ?? 0));
+        setPr({ max_weight: maxWeight || null, max_reps: maxReps || null });
+      });
+  }, [userId, exerciseId]);
+
+  return pr;
 }
 
 export default function WorkoutScreen() {
   const router = useRouter();
   const { userId } = useAuth();
-  const { id: routineId } = useLocalSearchParams();
-  const [routine, setRoutine] = React.useState<any>(null);
+  const isDemo = useDemoStore((s) => s.isDemo);
+  const { handleError } = useNetworkError();
+  const { id: routineId } = useLocalSearchParams<{ id: string }>();
+  const [routine, setRoutine] = React.useState<{ name: string; focus?: string } | null>(null);
   const [exercises, setExercises] = useState<ExerciseSession[]>([]);
-  const [currentExIndex, setCurrentExIndex] = useState(0);
+  const [currentIdx, setCurrentIdx] = useState(0);
   const [loading, setLoading] = useState(true);
   const [timer, setTimer] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [setLogs, setSetLogs] = useState<SetLog[]>([]);
+  const [currentSetInputs, setCurrentSetInputs] = useState<{ reps: string; weight: string }[]>([]);
+  const sessionId = useRef(`session_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+  const startedAt = useRef(new Date());
 
   React.useEffect(() => {
-    loadRoutine();
+    if (isDemo) loadDemo();
+    else loadFromSupabase();
   }, [routineId]);
 
   React.useEffect(() => {
-    let interval: any;
-    if (timerRunning && timer > 0) {
-      interval = setInterval(() => setTimer((t) => t - 1), 1000);
-    } else if (timer === 0 && timerRunning) {
-      setTimerRunning(false);
-    }
+    if (!timerRunning) return;
+    const interval = setInterval(() => {
+      setTimer((t) => {
+        if (t <= 1) { setTimerRunning(false); return 0; }
+        return t - 1;
+      });
+    }, 1000);
     return () => clearInterval(interval);
-  }, [timerRunning, timer]);
+  }, [timerRunning]);
 
-  async function loadRoutine() {
+  function initSetInputs(ex: ExerciseSession) {
+    setCurrentSetInputs(Array.from({ length: ex.sets }, () => ({ reps: '', weight: '' })));
+  }
+
+  function loadDemo() {
+    const found = DEMO_ROUTINES.find((r) => r.id === routineId);
+    if (!found) { setLoading(false); return; }
+    setRoutine({ name: found.name, focus: (found as any).focus });
+    const exs = found.routine_exercises.map((e) => ({
+      exercise_id: e.exercise_id,
+      name: e.exercise.name_es,
+      sets: e.sets,
+      reps: e.reps ?? undefined,
+      seconds: e.seconds ?? undefined,
+      rest_seconds: e.rest_seconds,
+      completed: false,
+    }));
+    setExercises(exs);
+    if (exs.length) initSetInputs(exs[0]);
+    setLoading(false);
+  }
+
+  async function loadFromSupabase() {
     try {
       const { data: rout } = await supabase
-        .from('routines')
-        .select('*')
-        .eq('id', routineId)
-        .single();
-
+        .from('routines').select('*').eq('id', routineId).single();
       const { data: exs } = await supabase
         .from('routine_exercises')
         .select('*, exercise:exercises(*)')
         .eq('routine_id', routineId)
         .order('position');
-
       setRoutine(rout);
-      setExercises(
-        exs?.map((e: any) => ({
-          exercise_id: e.exercise_id,
-          name: e.exercise.name_es,
-          sets: e.sets,
-          reps: e.reps,
-          seconds: e.seconds,
-          rest_seconds: e.rest_seconds,
-          currentSet: 1,
-          completed: false,
-        })) || []
-      );
+      const mapped = exs?.map((e: any) => ({
+        exercise_id: e.exercise_id,
+        name: e.exercise.name_es,
+        sets: e.sets,
+        reps: e.reps,
+        seconds: e.seconds,
+        rest_seconds: e.rest_seconds,
+        completed: false,
+      })) || [];
+      setExercises(mapped);
+      if (mapped.length) initSetInputs(mapped[0]);
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -78,28 +151,106 @@ export default function WorkoutScreen() {
     }
   }
 
-  const currentEx = exercises[currentExIndex];
-  const progress = exercises.filter((e) => e.completed).length;
+  const currentEx = exercises[currentIdx];
+  const completedCount = exercises.filter((e) => e.completed).length;
+  const progress = exercises.length ? completedCount / exercises.length : 0;
+  const totalXP = 100 + exercises.length * 5;
 
-  function nextExercise() {
-    if (currentExIndex < exercises.length - 1) {
-      setCurrentExIndex(currentExIndex + 1);
-      setTimer(0);
-      setTimerRunning(false);
+  function markCompleteAndNext() {
+    // Save set logs for current exercise
+    const newLogs: SetLog[] = currentSetInputs.map((inp, i) => ({
+      exercise_id: currentEx.exercise_id,
+      set_number: i + 1,
+      reps_done: inp.reps ? parseInt(inp.reps, 10) : (currentEx.reps ?? null),
+      weight_kg: inp.weight ? parseFloat(inp.weight) : null,
+      seconds_done: currentEx.seconds ?? null,
+    }));
+    setSetLogs((prev) => [...prev, ...newLogs]);
+
+    const updated = [...exercises];
+    updated[currentIdx].completed = true;
+    setExercises(updated);
+    setTimer(0);
+    setTimerRunning(false);
+
+    const nextIdx = currentIdx + 1;
+    if (nextIdx < exercises.length) {
+      setCurrentIdx(nextIdx);
+      initSetInputs(exercises[nextIdx]);
     }
   }
 
+  function toggleTimer() {
+    if (!timerRunning && timer === 0) {
+      setTimer(currentEx.rest_seconds);
+      setTimerRunning(true);
+    } else {
+      setTimerRunning(!timerRunning);
+    }
+  }
+
+  async function saveSetLogs(allLogs: SetLog[]) {
+    if (!userId || !allLogs.length) return;
+    const rows = allLogs.map((l) => ({
+      user_id: userId,
+      session_id: sessionId.current,
+      routine_id: routineId,
+      exercise_id: l.exercise_id,
+      set_number: l.set_number,
+      reps_done: l.reps_done,
+      weight_kg: l.weight_kg,
+      seconds_done: l.seconds_done,
+    }));
+    await supabase.from('workout_sets').insert(rows);
+  }
+
   async function handleComplete() {
+    if (isDemo) {
+      Alert.alert('¡Excelente!', `Entrenamiento completado · +${totalXP} XP`, [
+        { text: 'Volver', onPress: () => router.replace('/(tabs)/home') },
+      ]);
+      return;
+    }
     try {
       setCompleting(true);
-      const xp = 100 + exercises.length * 5;
-      await completeWorkout(userId!, routineId as string, new Date(), [], xp);
-      Alert.alert('¡Felicidades!', `+${xp} XP ganados`, [
+      const exercisesCompleted = exercises.map((e) => ({
+        exercise_id: e.exercise_id,
+        sets_done: e.sets,
+      }));
+      const durationSecs = Math.floor((Date.now() - startedAt.current.getTime()) / 1000);
+      await Promise.all([
+        completeWorkout(userId!, routineId as string, startedAt.current, exercisesCompleted, totalXP),
+        saveSetLogs(setLogs),
+      ]);
+
+      // Chequear badges de workout
+      const { data: statsData } = await supabase
+        .from('workout_sets')
+        .select('session_id, set_number, weight_kg, reps_done')
+        .eq('user_id', userId!);
+      const sessions = new Set((statsData ?? []).map((r: any) => r.session_id));
+      const totalSets = (statsData ?? []).length;
+      const totalVolume = (statsData ?? []).reduce((acc: number, r: any) =>
+        acc + (r.weight_kg ?? 0) * (r.reps_done ?? 0), 0);
+      const { data: profileData } = await supabase
+        .from('profiles').select('level,rank,streak_days').eq('id', userId!).single();
+      await checkAndAwardBadges(userId!, {
+        totalWorkouts: sessions.size,
+        totalSets,
+        totalVolume,
+        level: profileData?.level ?? 1,
+        rank: profileData?.rank ?? 'E',
+        streakDays: profileData?.streak_days ?? 0,
+      });
+
+      Alert.alert('¡Misión cumplida!', `+${totalXP} XP ganados\n⏱ ${Math.floor(durationSecs / 60)} min`, [
         { text: 'OK', onPress: () => router.replace('/(tabs)/home') },
       ]);
-    } catch (err) {
-      Alert.alert('Error', 'No se pudo completar el entrenamiento');
-      console.error(err);
+    } catch (err: any) {
+      const handled = handleError(err, 'Guardar tu entrenamiento');
+      if (!handled) {
+        Alert.alert('Error', 'No se pudo completar el entrenamiento');
+      }
     } finally {
       setCompleting(false);
     }
@@ -107,135 +258,310 @@ export default function WorkoutScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <SystemPanel>
-          <SystemText>Cargando entrenamiento...</SystemText>
-        </SystemPanel>
+      <SafeAreaView style={styles.root}>
+        <AuroraBackground />
+        <View style={styles.loadingWrap}>
+          <SystemText dim>Cargando entrenamiento...</SystemText>
+        </View>
       </SafeAreaView>
     );
   }
 
-  return (
-    <SafeAreaView style={styles.container}>
-      {currentEx ? (
-        <>
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${((progress + 1) / exercises.length) * 100}%` },
-              ]}
-            />
-          </View>
+  // ── Pantalla de completado ────────────────────────────────────────────────────
+  if (!currentEx || (completedCount === exercises.length && exercises.length > 0)) {
+    const totalSets = exercises.reduce((a, e) => a + e.sets, 0);
+    const setsWithWeight = setLogs.filter((s) => s.weight_kg).length;
+    const totalVolume = setLogs.reduce((a, s) => a + (s.weight_kg ?? 0) * (s.reps_done ?? 0), 0);
 
-          <ScrollView contentContainerStyle={styles.scroll}>
-            <SystemPanel style={styles.header}>
-              <SystemTitle>{routine.name}</SystemTitle>
-              <SystemText style={{ marginTop: spacing.sm }}>
-                Ejercicio {currentExIndex + 1} de {exercises.length}
+    return (
+      <SafeAreaView style={styles.root}>
+        <AuroraBackground />
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <Animated.View entering={FadeInDown.delay(0).springify()} style={styles.completeHeader}>
+            <Pill dotColor={colors.success}>Entrenamiento completo</Pill>
+            <GradientText
+              colors={[colors.success, gradients.brand[0]] as [string, string]}
+              style={styles.completeTitle}
+            >
+              ¡Misión{'\n'}Cumplida!
+            </GradientText>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.delay(80).springify()}>
+            <LinearGradient
+              colors={gradients.brand as any}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={styles.xpBadgeWrap}
+            >
+              <View style={styles.xpBadgeInner}>
+                <SystemText style={styles.xpBadgeLabel}>XP GANADOS</SystemText>
+                <GradientText style={styles.xpBadgeValue}>+{totalXP}</GradientText>
+              </View>
+            </LinearGradient>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.delay(160).springify()}>
+            <SystemPanel style={styles.summaryPanel}>
+              <StatRow label="Ejercicios completados" value={exercises.length} />
+              <StatRow label="Series totales" value={totalSets} />
+              {totalVolume > 0 && (
+                <StatRow label="Volumen total" value={`${totalVolume.toLocaleString('es-MX')} kg`} />
+              )}
+              {setsWithWeight > 0 && (
+                <StatRow label="Sets con peso" value={setsWithWeight} />
+              )}
+              <StatRow label="Rutina" value={routine?.name ?? '—'} />
+            </SystemPanel>
+          </Animated.View>
+
+          <SystemButton
+            title="Confirmar y volver al inicio"
+            variant="gradient"
+            loading={completing}
+            onPress={handleComplete}
+          />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // ── Pantalla de ejercicio activo ─────────────────────────────────────────────
+  const timerLabel = timerRunning
+    ? `⏸  ${timer}s`
+    : timer === 0
+    ? `▶  Descanso ${currentEx.rest_seconds}s`
+    : `▶  ${timer}s`;
+
+  return (
+    <SafeAreaView style={styles.root}>
+      <AuroraBackground />
+
+      <View style={styles.topBar}>
+        <ProgressBar progress={progress} height={5} />
+        <View style={styles.topBarRow}>
+          <SystemText dim style={styles.topBarText}>{routine?.name}</SystemText>
+          <SystemText dim style={styles.topBarText}>
+            {completedCount + 1} / {exercises.length}
+          </SystemText>
+        </View>
+      </View>
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          {/* Ejercicio hero */}
+          <SystemWindowPanel style={styles.exerciseCard}>
+            <Pill dotColor={colors.glow}>{currentEx.reps ? 'Fuerza' : 'Tiempo'}</Pill>
+            <GradientText style={styles.exerciseName}>{currentEx.name}</GradientText>
+
+            <View style={styles.statsRow}>
+              <View style={styles.statBox}>
+                <SystemText style={styles.statValue}>{currentEx.sets}</SystemText>
+                <SystemText dim style={styles.statLabel}>SERIES</SystemText>
+              </View>
+              {currentEx.reps && (
+                <View style={styles.statBox}>
+                  <SystemText style={[styles.statValue, { color: colors.glow }]}>{currentEx.reps}</SystemText>
+                  <SystemText dim style={styles.statLabel}>REPS</SystemText>
+                </View>
+              )}
+              {currentEx.seconds && (
+                <View style={styles.statBox}>
+                  <SystemText style={[styles.statValue, { color: colors.warning }]}>{currentEx.seconds}s</SystemText>
+                  <SystemText dim style={styles.statLabel}>DURACIÓN</SystemText>
+                </View>
+              )}
+              <View style={styles.statBox}>
+                <SystemText style={[styles.statValue, { color: colors.accent }]}>{currentEx.rest_seconds}s</SystemText>
+                <SystemText dim style={styles.statLabel}>DESCANSO</SystemText>
+              </View>
+            </View>
+          </SystemWindowPanel>
+
+          {/* Registro de series */}
+          <Animated.View entering={FadeInRight.delay(0).springify()}>
+            <SystemPanel style={styles.setsPanel}>
+              <SystemText style={styles.setsPanelTitle}>Registrar series</SystemText>
+
+              {/* Header */}
+              <View style={styles.setRow}>
+                <SystemText dim style={[styles.setCell, styles.setCellSerie]}>SERIE</SystemText>
+                {currentEx.reps && (
+                  <SystemText dim style={[styles.setCell, styles.setCellInput]}>REPS</SystemText>
+                )}
+                <SystemText dim style={[styles.setCell, styles.setCellInput]}>PESO (kg)</SystemText>
+              </View>
+
+              {currentSetInputs.map((inp, i) => (
+                <Animated.View
+                  key={i}
+                  entering={FadeInDown.delay(i * 40).springify()}
+                  style={styles.setRow}
+                >
+                  {/* Número de serie */}
+                  <View style={[styles.setCell, styles.setCellSerie]}>
+                    <LinearGradient
+                      colors={gradients.brand as any}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                      style={styles.setBadge}
+                    >
+                      <SystemText style={styles.setBadgeText}>{i + 1}</SystemText>
+                    </LinearGradient>
+                  </View>
+
+                  {/* Reps */}
+                  {currentEx.reps && (
+                    <TextInput
+                      style={[styles.setCell, styles.setCellInput, styles.setInput]}
+                      placeholder={String(currentEx.reps)}
+                      placeholderTextColor={colors.textFaint}
+                      keyboardType="numeric"
+                      value={inp.reps}
+                      onChangeText={(v) => {
+                        const updated = [...currentSetInputs];
+                        updated[i] = { ...updated[i], reps: v };
+                        setCurrentSetInputs(updated);
+                      }}
+                    />
+                  )}
+
+                  {/* Peso */}
+                  <TextInput
+                    style={[styles.setCell, styles.setCellInput, styles.setInput]}
+                    placeholder="—"
+                    placeholderTextColor={colors.textFaint}
+                    keyboardType="decimal-pad"
+                    value={inp.weight}
+                    onChangeText={(v) => {
+                      const updated = [...currentSetInputs];
+                      updated[i] = { ...updated[i], weight: v };
+                      setCurrentSetInputs(updated);
+                    }}
+                  />
+                </Animated.View>
+              ))}
+            </SystemPanel>
+          </Animated.View>
+
+          {/* Timer de descanso */}
+          <Pressable onPress={toggleTimer}>
+            <LinearGradient
+              colors={timerRunning
+                ? ([colors.bgElevated, colors.bgElevated] as any)
+                : (gradients.mana as any)
+              }
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={styles.timerButton}
+            >
+              <SystemText style={[
+                styles.timerText,
+                { color: timerRunning ? colors.glow : colors.white },
+              ]}>
+                {timerLabel}
+              </SystemText>
+            </LinearGradient>
+          </Pressable>
+
+          {/* Botón completar */}
+          <SystemButton
+            title="Completar ejercicio ✓"
+            variant="gradient"
+            onPress={markCompleteAndNext}
+          />
+
+          {/* Próximos ejercicios */}
+          {currentIdx < exercises.length - 1 && (
+            <SystemPanel style={styles.nextPanel}>
+              <SystemText dim style={styles.nextLabel}>SIGUIENTE</SystemText>
+              <SystemText style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>
+                {exercises[currentIdx + 1].name}
               </SystemText>
             </SystemPanel>
-
-            <SystemPanel>
-              <Text style={styles.exerciseName}>{currentEx.name}</Text>
-              <View style={styles.repsContainer}>
-                <View style={styles.repsBox}>
-                  <Text style={styles.repsLabel}>SERIES</Text>
-                  <Text style={styles.repsValue}>{currentEx.sets}</Text>
-                </View>
-                {currentEx.reps && (
-                  <View style={styles.repsBox}>
-                    <Text style={styles.repsLabel}>REPS</Text>
-                    <Text style={styles.repsValue}>{currentEx.reps}</Text>
-                  </View>
-                )}
-                {currentEx.seconds && (
-                  <View style={styles.repsBox}>
-                    <Text style={styles.repsLabel}>SEGUNDOS</Text>
-                    <Text style={styles.repsValue}>{currentEx.seconds}s</Text>
-                  </View>
-                )}
-                <View style={styles.repsBox}>
-                  <Text style={styles.repsLabel}>DESCANSO</Text>
-                  <Text style={styles.repsValue}>{currentEx.rest_seconds}s</Text>
-                </View>
-              </View>
-
-              <Pressable
-                style={styles.timerButton}
-                onPress={() => {
-                  if (!timerRunning && timer === 0) {
-                    setTimer(currentEx.rest_seconds);
-                    setTimerRunning(true);
-                  } else {
-                    setTimerRunning(!timerRunning);
-                  }
-                }}
-              >
-                <Text style={styles.timerText}>
-                  {timerRunning ? '⏸' : '▶'} {timer}s
-                </Text>
-              </Pressable>
-
-              <View style={styles.buttonRow}>
-                <SystemButton
-                  title="COMPLETAR EJERCICIO"
-                  onPress={() => {
-                    const newExercises = [...exercises];
-                    newExercises[currentExIndex].completed = true;
-                    setExercises(newExercises);
-                    nextExercise();
-                  }}
-                  style={{ flex: 1, marginRight: spacing.sm }}
-                />
-              </View>
-            </SystemPanel>
-          </ScrollView>
-        </>
-      ) : (
-        <ScrollView contentContainerStyle={styles.scroll}>
-          <SystemPanel style={styles.header}>
-            <SystemTitle>¡ENTRENAMIENTO COMPLETADO!</SystemTitle>
-          </SystemPanel>
-
-          <SystemPanel>
-            <SystemText style={{ fontSize: 18, marginBottom: spacing.lg }}>
-              Excelente trabajo, Cazador
-            </SystemText>
-            <StatRow label="Ejercicios" value={exercises.length} />
-            <StatRow label="Series Totales" value={exercises.reduce((a, e) => a + e.sets, 0)} />
-            <StatRow label="XP a Ganar" value={`+${100 + exercises.length * 5}`} />
-
-            <SystemButton
-              title="CONFIRMAR ENTRENAMIENTO"
-              loading={completing}
-              onPress={handleComplete}
-            />
-          </SystemPanel>
+          )}
         </ScrollView>
-      )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  scroll: { padding: spacing.md, paddingTop: spacing.lg },
-  progressBar: { height: 8, backgroundColor: colors.bgElevated, width: '100%' },
-  progressFill: { height: '100%', backgroundColor: colors.glow },
-  header: { marginBottom: spacing.lg },
-  exerciseName: { color: colors.glow, fontSize: 22, fontWeight: '700', marginBottom: spacing.lg },
-  repsContainer: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: spacing.lg },
-  repsBox: { alignItems: 'center', padding: spacing.md, backgroundColor: colors.bgElevated, borderRadius: 10 },
-  repsLabel: { color: colors.textDim, fontSize: 11, fontWeight: '700', marginBottom: 4 },
-  repsValue: { color: colors.glow, fontSize: 20, fontWeight: '800' },
+  root: { flex: 1, backgroundColor: colors.bg },
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  scroll: { padding: spacing.lg, paddingTop: spacing.md, gap: spacing.md, paddingBottom: 80 },
+
+  topBar: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    gap: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.panelBorder,
+  },
+  topBarRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  topBarText: { fontSize: 12, letterSpacing: 0.5 },
+
+  exerciseCard: { gap: spacing.sm },
+  exerciseName: { fontSize: 30, lineHeight: 34, fontWeight: '900' },
+  statsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  statBox: {
+    flex: 1, backgroundColor: colors.bgElevated,
+    borderRadius: radius.md, padding: spacing.md,
+    alignItems: 'center', gap: 4,
+  },
+  statValue: { fontSize: 24, fontWeight: '900', color: colors.text },
+  statLabel: { fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase' },
+
+  setsPanel: { gap: spacing.sm },
+  setsPanelTitle: { fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: colors.textFaint, marginBottom: 4 },
+  setRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  setCell: { fontSize: 13, color: colors.text },
+  setCellSerie: { width: 44, alignItems: 'center' },
+  setCellInput: { flex: 1 },
+  setInput: {
+    backgroundColor: colors.bgElevated,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+    borderWidth: 1,
+    borderColor: colors.panelBorder,
+  },
+  setBadge: {
+    width: 32, height: 32, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  setBadgeText: { fontSize: 13, fontWeight: '900', color: colors.white },
+
   timerButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 15,
+    borderRadius: radius.lg,
     padding: spacing.lg,
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    justifyContent: 'center',
+    minHeight: 72,
+    borderWidth: 1,
+    borderColor: colors.panelBorder,
   },
-  timerText: { color: colors.white, fontSize: 28, fontWeight: '800' },
-  buttonRow: { flexDirection: 'row' },
+  timerText: { fontSize: 22, fontWeight: '800', letterSpacing: 1 },
+
+  nextPanel: { paddingVertical: spacing.md, gap: 4 },
+  nextLabel: { fontSize: 10, letterSpacing: 2, textTransform: 'uppercase' },
+
+  completeHeader: { gap: spacing.sm },
+  completeTitle: { fontSize: 48, lineHeight: 52, fontWeight: '900' },
+  xpBadgeWrap: { borderRadius: radius.lg, padding: 2, alignSelf: 'center', marginVertical: spacing.lg },
+  xpBadgeInner: {
+    backgroundColor: colors.bg,
+    borderRadius: radius.lg - 2,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+    alignItems: 'center',
+  },
+  xpBadgeLabel: { fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: colors.textFaint },
+  xpBadgeValue: { fontSize: 52, fontWeight: '900' },
+  summaryPanel: {},
 });

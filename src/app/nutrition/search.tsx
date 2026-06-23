@@ -11,7 +11,7 @@ import { localDateString } from '../../lib/dates';
 import { analyzeFoodPhoto, type FoodAnalysisResult } from '../../services/ai';
 import { updateQuestProgress } from '../../services/quests';
 import { checkAndAwardBadges } from '../../services/badges';
-import { useAuthGuard } from '../../lib/authGuard';
+import { useNetworkError } from '../../lib/networkError';
 
 async function checkMealBadges(userId: string) {
   const { data: days } = await supabase
@@ -67,7 +67,7 @@ export default function SearchFoodScreen() {
   const params = useLocalSearchParams<{ date?: string }>();
   const { userId } = useAuth();
   const isDemo = useDemoStore((s) => s.isDemo);
-  const { handleAuthError } = useAuthGuard();
+  const { handleError } = useNetworkError();
   const { data: profile } = useProfile(userId);
   const logDate = params.date ?? localDateString();
   const [searchTerm, setSearchTerm] = useState('');
@@ -128,8 +128,8 @@ export default function SearchFoodScreen() {
       void supabase.rpc('update_streak');
       router.replace('/(tabs)/nutrition');
     } catch (err: any) {
-      const isAuthError = handleAuthError(err, 'Agregar comida');
-      if (!isAuthError) {
+      const handled = handleError(err, 'Agregar comida');
+      if (!handled) {
         console.error('Error:', err);
       }
     } finally {
@@ -155,8 +155,11 @@ export default function SearchFoodScreen() {
         setAnalyzeLoading(true);
         setAiResults(await analyzeFoodPhoto(result.assets[0].base64, 'image/jpeg'));
       }
-    } catch {
-      Alert.alert('Error', 'No se pudo analizar la foto');
+    } catch (err: any) {
+      const handled = handleError(err, 'Analizar foto');
+      if (!handled) {
+        Alert.alert('Error', 'No se pudo analizar la foto');
+      }
     } finally {
       setAnalyzeLoading(false);
     }
@@ -188,8 +191,11 @@ export default function SearchFoodScreen() {
       void checkMealQuest(userId); void checkMealBadges(userId);
       void supabase.rpc('update_streak');
       router.replace('/(tabs)/nutrition');
-    } catch {
-      Alert.alert('Error', 'No se pudieron guardar los alimentos');
+    } catch (err: any) {
+      const handled = handleError(err, 'Guardar alimentos detectados');
+      if (!handled) {
+        Alert.alert('Error', 'No se pudieron guardar los alimentos');
+      }
     } finally {
       setSavingAi(false);
     }
@@ -217,8 +223,11 @@ export default function SearchFoodScreen() {
       void checkMealQuest(userId); void checkMealBadges(userId);
       void supabase.rpc('update_streak');
       router.replace('/(tabs)/nutrition');
-    } catch {
-      Alert.alert('Error', 'No se pudo guardar el alimento');
+    } catch (err: any) {
+      const handled = handleError(err, 'Guardar alimento manual');
+      if (!handled) {
+        Alert.alert('Error', 'No se pudo guardar el alimento');
+      }
     } finally {
       setSavingManual(false);
     }
