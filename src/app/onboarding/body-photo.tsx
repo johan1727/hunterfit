@@ -3,7 +3,6 @@ import { View, ScrollView, StyleSheet, SafeAreaView, Image, Alert, Text, Pressab
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../hooks/useAuth';
 import { useUpdateProfile } from '../../hooks/useData';
@@ -26,6 +25,7 @@ export default function BodyPhotoScreen() {
   const { userId } = useAuth();
   const updateProfile = useUpdateProfile(userId);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
   async function pickImage() {
@@ -33,8 +33,12 @@ export default function BodyPhotoScreen() {
       mediaTypes: ['images'],
       aspect: [3, 4],
       quality: 0.7,
+      base64: true,
     });
-    if (!result.canceled) setPhotoUri(result.assets[0].uri);
+    if (!result.canceled) {
+      setPhotoUri(result.assets[0].uri);
+      setPhotoBase64(result.assets[0].base64 ?? null);
+    }
   }
 
   async function handleComplete() {
@@ -46,9 +50,8 @@ export default function BodyPhotoScreen() {
     if (!photoUri) return;
     setUploading(true);
     try {
-      const base64 = await FileSystem.readAsStringAsync(photoUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
+      if (!photoBase64) throw new Error('No base64 disponible');
+      const base64 = photoBase64;
       const timestamp = Date.now();
       const fileName = `${userId}/body_${timestamp}.jpg`;
       const { error: uploadErr } = await supabase.storage
