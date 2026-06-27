@@ -3,7 +3,6 @@ import { View, ScrollView, StyleSheet, SafeAreaView, Image, Text, Pressable, Ale
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system/legacy';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
@@ -68,13 +67,15 @@ export default function ProgressPhotosScreen() {
   const [note, setNote] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [selectedUri, setSelectedUri] = useState<string | null>(null);
+  const [selectedBase64, setSelectedBase64] = useState<string | null>(null);
 
   async function pickPhoto() {
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'], quality: 0.75, aspect: [3, 4],
+      mediaTypes: ['images'], quality: 0.75, aspect: [3, 4], base64: true,
     });
     if (!result.canceled) {
       setSelectedUri(result.assets[0].uri);
+      setSelectedBase64(result.assets[0].base64 ?? null);
       setShowForm(true);
     }
   }
@@ -83,9 +84,8 @@ export default function ProgressPhotosScreen() {
     if (!selectedUri) return;
     setUploading(true);
     try {
-      const base64 = await FileSystem.readAsStringAsync(selectedUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
+      if (!selectedBase64) throw new Error('No base64 disponible');
+      const base64 = selectedBase64;
       const timestamp = Date.now();
       const path = `${userId}/progress_${timestamp}.jpg`;
       const { error: upErr } = await supabase.storage
@@ -95,6 +95,7 @@ export default function ProgressPhotosScreen() {
       await addPhoto.mutateAsync({ path, note: note.trim() || undefined });
       setShowForm(false);
       setSelectedUri(null);
+      setSelectedBase64(null);
       setNote('');
     } catch {
       Alert.alert('Error', 'No se pudo subir la foto');
@@ -146,7 +147,7 @@ export default function ProgressPhotosScreen() {
                 onChangeText={setNote}
               />
               <SystemButton title={uploading ? 'Subiendo…' : 'Guardar foto'} variant="gradient" loading={uploading} onPress={handleSave} />
-              <SystemButton title="Cancelar" variant="ghost" onPress={() => { setShowForm(false); setSelectedUri(null); }} />
+              <SystemButton title="Cancelar" variant="ghost" onPress={() => { setShowForm(false); setSelectedUri(null); setSelectedBase64(null); }} />
             </SystemPanel>
           </Animated.View>
         )}
