@@ -57,3 +57,17 @@ Target: usuarios latinos que quieren una app motivadora y funcional.
 - `GradientText` usa prop `colors` (no `stops`)
 - `Pill.style` aplica a `Text` interno, no al `View` — no pasar `borderColor`/`backgroundColor` ahí
 - `GradStops` requiere cast `as [string, string]` para arrays dinámicos
+
+## Nutrición — RecipeAI y alimentos
+
+- **Categorías de `foods` normalizadas** a 10 canónicas: Proteínas, Verduras, Frutas, Lácteos, Cereales, Snacks, Grasas, Bebidas, Legumbres, Platillos. Antes había 27 valores duplicados (`proteina`/`proteinas`/`protein`...). El filtro de búsqueda las carga dinámicamente con `useFoodCategories()` — NO hardcodear.
+- **Unsplash Source API (`source.unsplash.com`) está MUERTO** (cerró en 2024). No generar URLs de ahí. El campo `foods.icon` ahora guarda **emojis por categoría**. Usar el componente `FoodIcon` (en recipe.tsx) que detecta URL vs emoji con fallback `onError`.
+- `generateMultipleRecipes` corre en **paralelo** (`Promise.allSettled`), no secuencial.
+- Stores nuevos con persistencia AsyncStorage: `preferencesStore.ts` (preferencias dieta + onboarding), `recipeHistoryStore.ts` (últimas 20 recetas).
+
+## Gotchas técnicos
+
+- **Sombras en web**: `shadowColor`/`shadowRadius` se traducen a `box-shadow` que respeta `borderRadius`. Un contenedor circular con sombra DEBE tener `borderRadius` y dimensiones explícitas, o el halo se ve cuadrado.
+- **expo-file-system SDK 56**: usar `import { File, Paths } from 'expo-file-system'` + `new File(Paths.cache, name)` + `.write()`. Ya NO existe `cacheDirectory`/`writeAsStringAsync`.
+- **JSX string props con `\n`**: `label="a\nb"` NO crea salto de línea (es backslash literal). Usar `label={"a\nb"}` con llaves.
+- `test-gemini.js` está en `.gitignore` (tiene API key hardcodeada local).

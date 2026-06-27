@@ -19,6 +19,7 @@ import {
   RankBadge, SystemButton, SystemPanel, SystemText, SystemWindowPanel,
 } from '../../components/system';
 import { nextRankInfo } from '../../constants/game';
+import { MenuList } from '../../components/MenuList';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -268,27 +269,9 @@ export default function ProfileScreen() {
                 onPress={() => router.push('/premium/upgrade' as any)}
               />
             )}
-            <SystemButton
-              title="🏅  Mis logros"
-              variant="ghost"
-              onPress={() => router.push('/profile/badges' as any)}
-            />
-            <SystemButton
-              title="🏆  Leaderboard global"
-              variant="ghost"
-              onPress={() => router.push('/social/leaderboard' as any)}
-            />
-            <SystemButton
-              title="❤️  Salud y pasos"
-              variant="ghost"
-              onPress={() => router.push('/profile/health' as any)}
-            />
-            <SystemButton
-              title="📷  Fotos de progreso"
-              variant="ghost"
-              onPress={() => router.push('/profile/photos')}
-            />
-            {editingUsername ? (
+
+            {/* Edición de nombre inline (cuando está activa) */}
+            {editingUsername && (
               <View style={styles.usernameRow}>
                 <TextInput
                   style={styles.usernameInput}
@@ -313,31 +296,45 @@ export default function ProfileScreen() {
                   <Text style={styles.usernameBtnText}>✕</Text>
                 </Pressable>
               </View>
-            ) : (
-              <SystemButton
-                title={`✏️  Nombre: ${profile.username || 'Sin nombre'}`}
-                variant="ghost"
-                onPress={() => { setUsernameInput(profile.username ?? ''); setEditingUsername(true); }}
-              />
             )}
-            <SystemButton
-              title="⚙️  Editar mis datos"
-              variant="ghost"
-              onPress={() => router.push('/onboarding/quiz?from=profile')}
+
+            <MenuList
+              title="Cuenta"
+              items={[
+                ...(editingUsername ? [] : [{
+                  icon: 'person-outline',
+                  label: 'Nombre',
+                  value: profile.username || 'Sin nombre',
+                  onPress: () => { setUsernameInput(profile.username ?? ''); setEditingUsername(true); },
+                }]),
+                { icon: 'create-outline', label: 'Editar mis datos', onPress: () => router.push('/onboarding/quiz?from=profile') },
+                { icon: 'people-outline', label: 'Cambiar personaje', onPress: () => router.push('/onboarding/character-select') },
+              ]}
             />
-            <SystemButton
-              title="⚔️  Cambiar personaje"
-              variant="ghost"
-              onPress={() => router.push('/onboarding/character-select')}
+
+            <MenuList
+              title="Progreso"
+              items={[
+                { icon: 'medal-outline', label: 'Mis logros', iconColor: colors.warning, onPress: () => router.push('/profile/badges' as any) },
+                { icon: 'trophy-outline', label: 'Leaderboard global', iconColor: colors.warning, onPress: () => router.push('/social/leaderboard' as any) },
+                { icon: 'heart-outline', label: 'Salud y pasos', iconColor: colors.danger, onPress: () => router.push('/profile/health' as any) },
+                { icon: 'camera-outline', label: 'Fotos de progreso', onPress: () => router.push('/profile/photos') },
+              ]}
             />
-            {remindersOn !== null && (
-              <SystemButton
-                title={remindersOn ? '🔔  Recordatorios ON · Desactivar' : '🔕  Recordatorios OFF · Activar'}
-                variant="ghost"
-                onPress={toggleReminders}
-              />
-            )}
-            <SystemButton title="Cerrar sesión" variant="danger" onPress={handleLogout} />
+
+            <MenuList
+              title="Ajustes"
+              items={[
+                ...(remindersOn !== null ? [{
+                  icon: remindersOn ? 'notifications' : 'notifications-off-outline',
+                  label: remindersOn ? 'Recordatorios activados' : 'Recordatorios desactivados',
+                  value: remindersOn ? 'ON' : 'OFF',
+                  hideChevron: true,
+                  onPress: toggleReminders,
+                }] : []),
+                { icon: 'log-out-outline', label: 'Cerrar sesión', danger: true, hideChevron: true, onPress: handleLogout },
+              ]}
+            />
           </>
         )}
         </Animated.View>

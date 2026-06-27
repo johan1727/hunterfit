@@ -114,7 +114,7 @@ export default function HomeScreen() {
         <Animated.View entering={FadeInDown.delay(130).springify()} style={styles.quickRow}>
           <QuickAction
             icon="🍽️"
-            label="Registrar\ncomida"
+            label={"Registrar\ncomida"}
             onPress={() => pressHaptic(() => router.push('/nutrition/search'))}
             gradient
           />
@@ -129,7 +129,7 @@ export default function HomeScreen() {
           />
           <QuickAction
             icon="📊"
-            label="Mi\nprogreso"
+            label={"Mi\nprogreso"}
             onPress={() => pressHaptic(() => router.push('/(tabs)/profile'))}
           />
         </Animated.View>

@@ -12,6 +12,7 @@ import {
   SystemPanel, SystemText, SystemButton,
 } from '../../components/system';
 import { FAB } from '../../components/FAB';
+import { MenuList } from '../../components/MenuList';
 
 const MEAL_LABELS: Record<string, string> = {
   desayuno: 'Desayuno',
@@ -282,30 +283,18 @@ export default function NutritionScreen() {
               style={{ marginTop: spacing.sm }}
             />
             <SystemButton
-              title="📋  Plan de comidas"
-              variant="ghost"
-              onPress={() => router.push('/nutrition/meal-plan')}
-            />
-            <SystemButton
-              title="🛒  Lista de compras"
-              variant="ghost"
-              onPress={() => router.push('/nutrition/shopping')}
-            />
-            <SystemButton
-              title="⚖️  Ajustar metas de macros"
-              variant="ghost"
-              onPress={() => router.push('/nutrition/macro-calc')}
-            />
-            <SystemButton
-              title="🍳  Recetas fit"
-              variant="ghost"
-              onPress={() => router.push('/nutrition/recipes' as any)}
-            />
-            <SystemButton
               title="🤖 Generar Receta con IA"
               onPress={() => router.push('/nutrition/recipe')}
               variant="gradient"
-              style={{ marginTop: spacing.md }}
+            />
+            <MenuList
+              title="Herramientas"
+              items={[
+                { icon: 'calendar-outline', label: 'Plan de comidas', onPress: () => router.push('/nutrition/meal-plan') },
+                { icon: 'cart-outline', label: 'Lista de compras', iconColor: colors.success, onPress: () => router.push('/nutrition/shopping') },
+                { icon: 'options-outline', label: 'Ajustar metas de macros', iconColor: colors.warning, onPress: () => router.push('/nutrition/macro-calc') },
+                { icon: 'restaurant-outline', label: 'Recetas fit', iconColor: colors.danger, onPress: () => router.push('/nutrition/recipes' as any) },
+              ]}
             />
           </>
         ) : (
