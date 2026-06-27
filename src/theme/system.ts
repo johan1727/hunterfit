@@ -48,6 +48,9 @@ export const rankColors: Record<string, string> = {
 
 export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 } as const;
 
+// Numeral tabular — para readouts del "Sistema" (stats, macros, precios, contadores)
+export const numeric: import('react-native').TextStyle = { fontVariant: ['tabular-nums'] };
+
 // Radios — pill = totalmente redondeado (botones/chips estilo Savee)
 export const radius = { sm: 12, md: 18, lg: 24, pill: 999 } as const;
 

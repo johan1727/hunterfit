@@ -3,6 +3,7 @@ import { View, ScrollView, StyleSheet, SafeAreaView, Text, TextInput, Alert, Pre
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useHunterData } from '../../hooks/useHunterData';
 import { useDemoStore } from '../../lib/demoStore';
@@ -13,13 +14,15 @@ import {
   cancelMealReminders,
   getRemindersEnabled,
 } from '../../services/notifications';
-import { colors, gradients, radius, rankColors, spacing } from '../../theme/system';
+import { colors, gradients, numeric, radius, rankColors, spacing } from '../../theme/system';
 import {
   AuroraBackground, GradientText, Pill, ProgressBar,
-  RankBadge, SystemButton, SystemPanel, SystemText, SystemWindowPanel,
+  RankBadge, SystemButton, SystemPanel, SystemText,
 } from '../../components/system';
 import { nextRankInfo } from '../../constants/game';
 import { MenuList } from '../../components/MenuList';
+import { HudPanel } from '../../components/HudPanel';
+import { StatRadar } from '../../components/StatRadar';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -124,15 +127,18 @@ export default function ProfileScreen() {
 
         {/* Status Window — el panel hero */}
         <Animated.View entering={FadeInDown.delay(60).springify()}>
-        <SystemWindowPanel>
+        <HudPanel>
           {/* Cabecera */}
           <View style={styles.heroRow}>
             <View style={{ flex: 1, gap: 6 }}>
               <Pill dotColor={rankColors[rankInfo.current]}>{rankInfo.current} · Nivel {profile.level}</Pill>
               <GradientText style={styles.username}>{profile.username || 'Cazador'}</GradientText>
-              <SystemText dim style={{ fontSize: 13 }}>
-                {profile.xp} XP · racha {profile.streak_days} días 🔥
-              </SystemText>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <SystemText dim style={[{ fontSize: 13 }, numeric]}>
+                  {profile.xp} XP · racha {profile.streak_days} días
+                </SystemText>
+                <Ionicons name="flame" size={13} color={colors.warning} />
+              </View>
             </View>
             <RankBadge rank={rankInfo.current} size={64} />
           </View>
@@ -141,24 +147,28 @@ export default function ProfileScreen() {
           <View style={{ marginTop: spacing.md, gap: 8 }}>
             <View style={styles.rankRow}>
               <SystemText dim style={{ fontSize: 11 }}>Rango {rankInfo.current}</SystemText>
-              <SystemText dim style={{ fontSize: 11 }}>
+              <SystemText dim style={[{ fontSize: 11 }, numeric]}>
                 {rankInfo.next ? `${rankInfo.remaining} XP → ${rankInfo.next}` : 'Rango máximo'}
               </SystemText>
             </View>
             <ProgressBar progress={rankInfo.progress} color={rankColors[rankInfo.current]} height={6} />
           </View>
-        </SystemWindowPanel>
+        </HudPanel>
         </Animated.View>
 
         {/* Stats RPG */}
         <Animated.View entering={FadeInDown.delay(140).springify()}>
-        <SystemPanel>
-          <SystemText style={styles.sectionLabel}>Estadísticas</SystemText>
-          <View style={styles.statsGrid}>
-            {Object.entries(stats).map(([key, val]) => (
-              <StatBar key={key} label={key.toUpperCase()} value={val} max={10} />
-            ))}
-          </View>
+        <SystemPanel style={{ alignItems: 'center' }}>
+          <SystemText style={[styles.sectionLabel, { alignSelf: 'flex-start' }]}>Estadísticas</SystemText>
+          <StatRadar
+            size={220}
+            stats={[
+              { label: 'STR', value: stats.str },
+              { label: 'AGI', value: stats.agi },
+              { label: 'VIT', value: stats.vit },
+              { label: 'STA', value: stats.sta },
+            ]}
+          />
         </SystemPanel>
         </Animated.View>
 
@@ -264,7 +274,7 @@ export default function ProfileScreen() {
           <>
             {!profile?.is_premium && (
               <SystemButton
-                title="👑  Obtener Hunter Pro — Oferta limitada"
+                title="Obtener Hunter Pro"
                 variant="gradient"
                 onPress={() => router.push('/premium/upgrade' as any)}
               />
@@ -290,10 +300,12 @@ export default function ProfileScreen() {
                   disabled={savingUsername || usernameInput.trim().length < 2}
                   style={[styles.usernameBtn, (savingUsername || usernameInput.trim().length < 2) && { opacity: 0.4 }]}
                 >
-                  <Text style={styles.usernameBtnText}>{savingUsername ? '…' : '✓'}</Text>
+                  {savingUsername
+                    ? <Text style={styles.usernameBtnText}>…</Text>
+                    : <Ionicons name="checkmark" size={18} color={colors.text} />}
                 </Pressable>
                 <Pressable onPress={() => setEditingUsername(false)} style={styles.usernameCancelBtn}>
-                  <Text style={styles.usernameBtnText}>✕</Text>
+                  <Ionicons name="close" size={18} color={colors.text} />
                 </Pressable>
               </View>
             )}
@@ -343,30 +355,6 @@ export default function ProfileScreen() {
     </SafeAreaView>
   );
 }
-
-function StatBar({ label, value, max }: { label: string; value: number; max: number }) {
-  return (
-    <View style={statBarStyles.row}>
-      <Text style={statBarStyles.label}>{label}</Text>
-      <View style={statBarStyles.track}>
-        <LinearGradient
-          colors={gradients.brand}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-          style={[statBarStyles.fill, { width: `${(value / max) * 100}%` }]}
-        />
-      </View>
-      <Text style={statBarStyles.value}>{value}</Text>
-    </View>
-  );
-}
-
-const statBarStyles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 10 },
-  label: { color: colors.textFaint, fontSize: 11, fontWeight: '700', width: 32, letterSpacing: 1 },
-  track: { flex: 1, height: 6, backgroundColor: colors.bgElevated, borderRadius: 3, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 3 },
-  value: { color: colors.glow, fontSize: 13, fontWeight: '800', width: 20, textAlign: 'right' },
-});
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
@@ -534,7 +522,6 @@ const styles = StyleSheet.create({
   rankRow: { flexDirection: 'row', justifyContent: 'space-between' },
 
   sectionLabel: { fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: colors.textFaint, marginBottom: spacing.md },
-  statsGrid: { gap: 0 },
 
   charCard: {},
   charRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },

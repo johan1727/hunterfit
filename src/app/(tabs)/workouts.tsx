@@ -13,6 +13,8 @@ import { regeneratePlan } from '../../services/routines';
 import { supabase } from '../../lib/supabase';
 import { colors, gradients, radius, spacing } from '../../theme/system';
 import { AuroraBackground, GradientText, Pill, SystemPanel, SystemText, SystemButton } from '../../components/system';
+import { HudPanel } from '../../components/HudPanel';
+import { HeroStat } from '../../components/HeroStat';
 import { EmptyState } from '../../components/EmptyState';
 import { EMPTY_STATES } from '../../lib/emptyState';
 
@@ -73,23 +75,37 @@ export default function WorkoutsScreen() {
               ? `${routines.reduce((s, r) => s + r.routine_exercises.length, 0)} ejercicios totales`
               : 'Genera tu primer plan personalizado'}
           </SystemText>
-
-          {/* Progreso semanal */}
-          {!isDemo && routines.length > 0 && (
-            <View style={styles.weekProgress}>
-              <View style={styles.weekBarTrack}>
-                <LinearGradient
-                  colors={gradients.brand}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                  style={[styles.weekBarFill, { width: `${Math.min(100, (completedDays / routines.length) * 100)}%` as any }]}
-                />
-              </View>
-              <SystemText dim style={{ fontSize: 12 }}>
-                {completedDays} de {routines.length} días esta semana
-              </SystemText>
-            </View>
-          )}
         </Animated.View>
+
+        {/* Hero: tracker de semana */}
+        {!isDemo && routines.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(60).springify()}>
+            <HudPanel>
+              <View style={styles.weekHeroRow}>
+                <HeroStat label="Esta semana" value={`${completedDays}/${routines.length}`} unit="días" size={56} />
+                <View style={styles.dayCells}>
+                  {routines.map((_, i) => {
+                    const done = i < completedDays;
+                    return done ? (
+                      <LinearGradient
+                        key={i}
+                        colors={gradients.brand}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                        style={styles.dayCell}
+                      >
+                        <Ionicons name="checkmark" size={16} color="#fff" />
+                      </LinearGradient>
+                    ) : (
+                      <View key={i} style={[styles.dayCell, styles.dayCellPending]}>
+                        <SystemText dim style={{ fontSize: 12, fontWeight: '800' }}>{i + 1}</SystemText>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            </HudPanel>
+          </Animated.View>
+        )}
 
         {/* Rutinas */}
         {!isDemo && routines.length === 0 ? (
@@ -165,9 +181,16 @@ const styles = StyleSheet.create({
   header: { gap: 6, marginBottom: spacing.sm },
   title: { fontSize: 46, lineHeight: 48 },
 
-  weekProgress: { gap: 6, marginTop: spacing.sm },
-  weekBarTrack: { height: 6, backgroundColor: colors.bgElevated, borderRadius: 3, overflow: 'hidden' },
-  weekBarFill: { height: '100%', borderRadius: 3 },
+  weekHeroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  dayCells: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end', maxWidth: 160 },
+  dayCell: {
+    width: 36, height: 36, borderRadius: radius.md,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  dayCellPending: {
+    backgroundColor: colors.bgElevated,
+    borderWidth: 1, borderColor: colors.panelBorder,
+  },
 
   routineCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md,

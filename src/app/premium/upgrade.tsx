@@ -7,9 +7,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useHunterData } from '../../hooks/useHunterData';
 import {
-  AuroraBackground, GradientText, SystemPanel, SystemWindowPanel, SystemText,
+  AuroraBackground, GradientText, SystemWindowPanel, SystemText,
 } from '../../components/system';
-import { colors, gradients, radius, spacing } from '../../theme/system';
+import { colors, gradients, numeric, radius, spacing } from '../../theme/system';
 
 const PLANS = [
   {
@@ -28,7 +28,7 @@ const PLANS = [
     period: '/año',
     pricePerDay: '$1.37',
     highlight: true,
-    badge: '🔥 MÁS POPULAR',
+    badge: 'MÁS POPULAR',
     saving: 'Ahorra 47%',
   },
   {
@@ -38,62 +38,32 @@ const PLANS = [
     period: 'pago único',
     pricePerDay: null,
     highlight: false,
-    badge: '💎 MEJOR VALOR',
+    badge: 'MEJOR VALOR',
   },
 ];
 
-const FEATURES_FREE = [
-  '✅ Rutinas básicas con 1 personaje',
-  '✅ Registro de alimentos (DB completa)',
-  '✅ Misiones diarias y semanales',
-  '✅ Leaderboard global',
-  '✅ Podómetro y pasos diarios',
-  '❌ Análisis de foto con IA',
-  '❌ Plan de comidas personalizado con IA',
-  '❌ Todos los personajes desbloqueados',
-  '❌ Badges exclusivos premium',
-  '❌ Soporte prioritario',
-];
-
-const FEATURES_PREMIUM = [
-  '✅ Todo lo del plan gratis',
-  '✅ Análisis de foto con IA (ilimitado)',
-  '✅ Plan de comidas semanal con IA',
-  '✅ 6 personajes + sus 3 formas',
-  '✅ Badges y rangos exclusivos premium',
-  '✅ Sin anuncios',
-  '✅ Historial ilimitado de entrenamientos',
-  '✅ Exportar datos a Excel/PDF',
-  '✅ Soporte prioritario 24/7',
-];
-
-const TESTIMONIALS = [
-  { name: 'Carlos M.', city: 'CDMX', text: 'En 3 meses bajé 8kg siguiendo el plan de la app. La IA de fotos es un game changer.', stars: 5 },
-  { name: 'Ana P.', city: 'Guadalajara', text: 'Finalmente una app de gym que se siente como un juego. No puedo dejar de subir de rango.', stars: 5 },
-  { name: 'Diego R.', city: 'Monterrey', text: 'El plan de comidas con IA me ahorra horas a la semana. Vale cada peso.', stars: 5 },
+// Comparativa Gratis vs Pro. `free` = incluido en el plan gratis (Pro incluye todo).
+const COMPARISON = [
+  { label: 'Rutinas con 1 personaje', free: true },
+  { label: 'Registro de alimentos (DB completa)', free: true },
+  { label: 'Misiones diarias y semanales', free: true },
+  { label: 'Leaderboard global', free: true },
+  { label: 'Podómetro y pasos diarios', free: true },
+  { label: 'Análisis de foto con IA (ilimitado)', free: false },
+  { label: 'Plan de comidas semanal con IA', free: false },
+  { label: 'Todos los personajes + sus 3 formas', free: false },
+  { label: 'Badges y rangos exclusivos', free: false },
+  { label: 'Sin anuncios', free: false },
+  { label: 'Historial ilimitado de entrenamientos', free: false },
+  { label: 'Exportar datos a Excel/PDF', free: false },
+  { label: 'Soporte prioritario 24/7', free: false },
 ];
 
 export default function UpgradeScreen() {
   const router = useRouter();
   const { profile } = useHunterData();
   const [selectedPlan, setSelectedPlan] = useState('annual');
-  const [timeLeft, setTimeLeft] = useState({ h: 2, m: 47, s: 33 });
   const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  // Countdown timer (oferta por tiempo limitado)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        let { h, m, s } = prev;
-        s--;
-        if (s < 0) { s = 59; m--; }
-        if (m < 0) { m = 59; h--; }
-        if (h < 0) return { h: 0, m: 0, s: 0 };
-        return { h, m, s };
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Pulse animation para el CTA
   useEffect(() => {
@@ -105,7 +75,6 @@ export default function UpgradeScreen() {
     ).start();
   }, []);
 
-  const pad = (n: number) => String(n).padStart(2, '0');
   const selected = PLANS.find((p) => p.id === selectedPlan)!;
 
   return (
@@ -118,41 +87,25 @@ export default function UpgradeScreen() {
             <Ionicons name="close" size={22} color={colors.textDim} />
           </Pressable>
           <View style={styles.proBadge}>
+            <Ionicons name="diamond" size={13} color="#FFD700" />
             <SystemText style={{ fontSize: 12, fontWeight: '900', color: '#FFD700' }}>
-              ⚡ HUNTER PRO
+              HUNTER PRO
             </SystemText>
           </View>
         </View>
 
         {/* Hero */}
         <View style={{ alignItems: 'center', gap: spacing.sm }}>
-          <SystemText style={{ fontSize: 52 }}>👑</SystemText>
+          <View style={styles.heroIcon}>
+            <Ionicons name="diamond" size={34} color={colors.glow} />
+          </View>
           <GradientText style={{ fontSize: 32, fontWeight: '900', textAlign: 'center', lineHeight: 36 }}>
             Desbloquea todo{'\n'}tu potencial
           </GradientText>
           <SystemText dim style={{ fontSize: 15, textAlign: 'center', lineHeight: 22 }}>
-            Únete a +12,000 cazadores que ya alcanzaron su mejor versión con Hunter Pro
+            Análisis con IA, plan de comidas semanal, todos los personajes y más.
           </SystemText>
         </View>
-
-        {/* Oferta por tiempo limitado */}
-        <LinearGradient colors={['#FF6B35', '#FF3366']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-          style={styles.ofertaBanner}>
-          <SystemText style={{ color: '#fff', fontWeight: '900', fontSize: 13 }}>
-            ⏰ OFERTA DE LANZAMIENTO — TERMINA EN:
-          </SystemText>
-          <View style={styles.countdown}>
-            {[{ v: timeLeft.h, l: 'h' }, { v: timeLeft.m, l: 'm' }, { v: timeLeft.s, l: 's' }].map((t, i) => (
-              <React.Fragment key={t.l}>
-                <View style={styles.countdownUnit}>
-                  <SystemText style={{ color: '#fff', fontWeight: '900', fontSize: 24 }}>{pad(t.v)}</SystemText>
-                  <SystemText style={{ color: '#ffffff80', fontSize: 10 }}>{t.l}</SystemText>
-                </View>
-                {i < 2 && <SystemText style={{ color: '#fff', fontWeight: '900', fontSize: 20 }}>:</SystemText>}
-              </React.Fragment>
-            ))}
-          </View>
-        </LinearGradient>
 
         {/* Plan selector */}
         <View style={{ gap: spacing.sm }}>
@@ -185,13 +138,13 @@ export default function UpgradeScreen() {
         {/* CTA */}
         <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
           <Pressable onPress={() => {/* TODO: RevenueCat */}}>
-            <LinearGradient colors={['#FFD700', '#FF6B35']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
               style={styles.ctaBtn}>
-              <SystemText style={{ fontSize: 17, fontWeight: '900', color: '#000' }}>
+              <SystemText style={[{ fontSize: 17, fontWeight: '900', color: '#fff' }, numeric]}>
                 Obtener Hunter Pro — {selected.price}{selected.period}
               </SystemText>
               {selected.id === 'annual' && (
-                <SystemText style={{ fontSize: 12, color: '#000', opacity: 0.7 }}>
+                <SystemText style={{ fontSize: 12, color: '#fff', opacity: 0.85 }}>
                   Solo {selected.pricePerDay} por día · Cancela cuando quieras
                 </SystemText>
               )}
@@ -205,39 +158,31 @@ export default function UpgradeScreen() {
 
         {/* Comparativa */}
         <SystemWindowPanel style={{ gap: spacing.md }}>
-          <SystemText style={{ fontWeight: '800', fontSize: 15, textAlign: 'center' }}>
-            Gratis vs Hunter Pro
-          </SystemText>
-          <View style={{ gap: 8 }}>
-            {FEATURES_PREMIUM.map((f, i) => {
-              const free = FEATURES_FREE[i] ?? '❌ No incluido';
-              const isFreeOk = free.startsWith('✅');
-              return (
-                <View key={i} style={styles.compareRow}>
-                  <SystemText style={{ flex: 1, fontSize: 13, color: isFreeOk ? colors.text : colors.textDim }}>
-                    {free}
-                  </SystemText>
-                  <SystemText style={{ flex: 1, fontSize: 13, color: '#4AE3B5' }}>{f}</SystemText>
+          <View style={styles.compareHead}>
+            <SystemText style={{ flex: 1, fontWeight: '800', fontSize: 15 }}>
+              Gratis vs Pro
+            </SystemText>
+            <SystemText dim style={styles.compareCol}>Gratis</SystemText>
+            <SystemText style={[styles.compareCol, { color: colors.glow }]}>Pro</SystemText>
+          </View>
+          <View style={{ gap: 10 }}>
+            {COMPARISON.map((item, i) => (
+              <View key={i} style={styles.compareRow}>
+                <SystemText style={{ flex: 1, fontSize: 13 }}>{item.label}</SystemText>
+                <View style={styles.compareCol}>
+                  <Ionicons
+                    name={item.free ? 'checkmark-circle' : 'close-circle'}
+                    size={18}
+                    color={item.free ? colors.success : colors.textFaint}
+                  />
                 </View>
-              );
-            })}
+                <View style={styles.compareCol}>
+                  <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+                </View>
+              </View>
+            ))}
           </View>
         </SystemWindowPanel>
-
-        {/* Testimonios */}
-        <SystemText style={{ fontWeight: '800', fontSize: 15, textAlign: 'center' }}>
-          Lo que dicen los cazadores
-        </SystemText>
-        {TESTIMONIALS.map((t) => (
-          <SystemPanel key={t.name} style={{ gap: spacing.xs }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <SystemText style={{ fontWeight: '700', fontSize: 14 }}>{t.name}</SystemText>
-              <SystemText dim style={{ fontSize: 13 }}>{t.city}</SystemText>
-            </View>
-            <SystemText style={{ fontSize: 13 }}>{'⭐'.repeat(t.stars)}</SystemText>
-            <SystemText dim style={{ fontSize: 13, lineHeight: 20, fontStyle: 'italic' }}>"{t.text}"</SystemText>
-          </SystemPanel>
-        ))}
 
         {/* Restore */}
         <Pressable onPress={() => {/* TODO: RevenueCat restore */}} style={{ alignItems: 'center' }}>
@@ -267,7 +212,7 @@ function PlanContent({ plan, selected }: { plan: typeof PLANS[0]; selected: bool
         )}
       </View>
       <View style={{ alignItems: 'flex-end' }}>
-        <SystemText style={{ fontWeight: '900', fontSize: 20, color: selected ? '#fff' : colors.text }}>
+        <SystemText style={[{ fontWeight: '900', fontSize: 20, color: selected ? '#fff' : colors.text }, numeric]}>
           {plan.price}
         </SystemText>
         <SystemText style={{ fontSize: 12, color: selected ? '#ffffff80' : colors.textDim }}>
@@ -290,16 +235,18 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.lg, paddingTop: spacing.xl, gap: spacing.md, paddingBottom: 60 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   proBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: '#FFD70020', borderRadius: radius.pill,
     paddingHorizontal: 12, paddingVertical: 5,
     borderWidth: 1, borderColor: '#FFD70040',
   },
-  ofertaBanner: {
-    borderRadius: radius.lg, padding: spacing.md,
-    alignItems: 'center', gap: spacing.sm,
+  heroIcon: {
+    width: 72, height: 72, borderRadius: 36,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.bgElevated,
+    borderWidth: 1.5, borderColor: colors.glow + '55',
+    shadowColor: colors.glow, shadowOpacity: 0.5, shadowRadius: 18, shadowOffset: { width: 0, height: 0 },
   },
-  countdown: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
-  countdownUnit: { alignItems: 'center', minWidth: 36 },
   planCard: {
     borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.panelBorder,
     backgroundColor: colors.bgElevated, padding: spacing.md,
@@ -323,7 +270,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg, padding: spacing.md + 4,
     alignItems: 'center', gap: 4,
   },
-  compareRow: { flexDirection: 'row', gap: spacing.sm, paddingVertical: 4 },
+  compareHead: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.panelBorder, paddingBottom: 8 },
+  compareCol: { width: 44, textAlign: 'center', alignItems: 'center', fontSize: 11, fontWeight: '800' },
+  compareRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', paddingVertical: 2 },
   savingBadge: {
     backgroundColor: '#4AE3B520', borderRadius: radius.pill,
     paddingHorizontal: 8, paddingVertical: 2, marginTop: 2,

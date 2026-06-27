@@ -10,11 +10,12 @@ import { localDateString } from '../../lib/dates';
 import { colors, gradients, radius, spacing } from '../../theme/system';
 import {
   AuroraBackground, GradientText, Pill, ProgressBar,
-  SystemPanel, SystemWindowPanel, SystemText, SystemButton,
+  SystemPanel, SystemText, SystemButton,
 } from '../../components/system';
 import { FAB } from '../../components/FAB';
 import { MenuList } from '../../components/MenuList';
 import { CalorieRing } from '../../components/CalorieRing';
+import { HudPanel } from '../../components/HudPanel';
 
 const MEAL_LABELS: Record<string, string> = {
   desayuno: 'Desayuno',
@@ -144,18 +145,22 @@ export default function NutritionScreen() {
 
         {/* Hero: calorías */}
         <Animated.View entering={FadeInDown.delay(80).springify()}>
-        <SystemWindowPanel>
-          <View style={styles.kcalRow}>
-            <CalorieRing consumed={totals.kcal} target={targets.kcal} size={120} />
-
-            {/* Info */}
-            <View style={{ flex: 1, gap: 8 }}>
-              <InfoKcal label="Meta" value={`${targets.kcal} kcal`} />
-              <InfoKcal label="Restante" value={`${remaining} kcal`} accent={remaining < 200 ? colors.success : colors.text} />
+        <HudPanel>
+          <View style={styles.kcalHero}>
+            <CalorieRing consumed={totals.kcal} target={targets.kcal} size={172} />
+            <View style={styles.kcalMetaRow}>
+              <View style={{ flex: 1 }}>
+                <InfoKcal label="Meta" value={`${targets.kcal} kcal`} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <InfoKcal label="Restante" value={`${remaining} kcal`} accent={remaining < 200 ? colors.success : colors.text} />
+              </View>
+            </View>
+            <View style={{ alignSelf: 'stretch' }}>
               <ProgressBar progress={kcalPct} height={6} />
             </View>
           </View>
-        </SystemWindowPanel>
+        </HudPanel>
         </Animated.View>
 
         {/* Macros */}
@@ -358,7 +363,8 @@ const styles = StyleSheet.create({
   },
   datePillText: { color: colors.text, fontSize: 13, fontWeight: '700' },
 
-  kcalRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  kcalHero: { alignItems: 'center', gap: spacing.md },
+  kcalMetaRow: { flexDirection: 'row', gap: spacing.lg, alignSelf: 'stretch' },
 
   sectionLabel: { fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: colors.textFaint, marginBottom: spacing.md },
 

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, FlatList, Alert, Text } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, FlatList, Alert, Text, TextInput, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -402,22 +401,35 @@ export default function SearchFoodScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <GradientText style={styles.title}>Buscar{'\n'}Alimento</GradientText>
-            <Pressable
-              onPress={() => router.push(`/nutrition/barcode?date=${logDate}&type=${mealType}`)}
-              style={styles.barcodeBtn}
-            >
-              <Ionicons name="barcode-outline" size={22} color={colors.text} />
-              <SystemText dim style={{ fontSize: 10, marginTop: 2 }}>Barcode</SystemText>
-            </Pressable>
+          <GradientText style={styles.title}>Buscar alimento</GradientText>
+
+          {/* Buscador hero */}
+          <View style={styles.searchHero}>
+            <Ionicons name="search" size={20} color={colors.textDim} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Busca pollo, arroz, manzana…"
+              placeholderTextColor={colors.textFaint}
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+              returnKeyType="search"
+            />
+            {searchTerm.length > 0 && (
+              <Pressable onPress={() => setSearchTerm('')} hitSlop={8}>
+                <Ionicons name="close-circle" size={18} color={colors.textFaint} />
+              </Pressable>
+            )}
           </View>
-          <SystemButton
-            title="📸  Analizar foto con IA"
-            variant="ghost"
-            loading={analyzeLoading}
-            onPress={handleAnalyzePhoto}
-          />
+
+          {/* Acciones compactas */}
+          <View style={styles.actionRow}>
+            <ActionChip icon="barcode-outline" label="Barcode"
+              onPress={() => router.push(`/nutrition/barcode?date=${logDate}&type=${mealType}`)} />
+            <ActionChip icon="camera-outline" label="Foto IA" loading={analyzeLoading}
+              onPress={handleAnalyzePhoto} />
+            <ActionChip icon="create-outline" label="Manual"
+              onPress={() => setShowManual(true)} />
+          </View>
         </View>
 
         {/* Selector de tipo de comida */}
@@ -479,13 +491,6 @@ export default function SearchFoodScreen() {
             ))}
           </SystemPanel>
         )}
-
-        {/* Buscador */}
-        <SystemInput
-          placeholder="Busca un alimento (ej: pollo, arroz, manzana)"
-          value={searchTerm}
-          onChangeText={setSearchTerm}
-        />
 
         {/* Categorías de alimentos */}
         <ScrollView
@@ -681,22 +686,6 @@ export default function SearchFoodScreen() {
           />
         )}
 
-        {/* Botón crear manual */}
-        {!showManual && (
-          <LinearGradient
-            colors={[colors.glow + '25', colors.accent + '15']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={styles.manualCtaGradient}
-          >
-            <Pressable onPress={() => setShowManual(true)} style={styles.manualCta}>
-              <SystemText style={{ fontSize: 16, fontWeight: '700', color: colors.glow }}>
-                ✏️  Crear alimento personalizado
-              </SystemText>
-              <SystemText dim style={{ fontSize: 12 }}>Ingresa nombre, calorías y macros</SystemText>
-            </Pressable>
-          </LinearGradient>
-        )}
-
         {/* Formulario manual */}
         {showManual && (
           <SystemWindowPanel style={{ gap: spacing.md }}>
@@ -826,12 +815,45 @@ export default function SearchFoodScreen() {
   );
 }
 
+function ActionChip({ icon, label, onPress, loading }: {
+  icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; loading?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={loading}
+      style={({ pressed }) => [styles.actionChip, pressed && { opacity: 0.6 }]}
+    >
+      {loading
+        ? <ActivityIndicator size="small" color={colors.glow} />
+        : <Ionicons name={icon} size={20} color={colors.glow} />}
+      <SystemText dim style={styles.actionChipLabel}>{label}</SystemText>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: spacing.lg, paddingTop: spacing.xl, gap: spacing.md, paddingBottom: 80 },
 
-  header: { gap: spacing.sm },
-  title: { fontSize: 38, lineHeight: 42, fontWeight: '900' },
+  header: { gap: spacing.md },
+  title: { fontSize: 46, lineHeight: 48, fontWeight: '900' },
+
+  searchHero: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    backgroundColor: colors.bgElevated, borderRadius: radius.lg,
+    borderWidth: 1.5, borderColor: colors.panelBorder,
+    paddingHorizontal: spacing.md, height: 54,
+  },
+  searchInput: { flex: 1, color: colors.text, fontSize: 16, fontWeight: '600', height: '100%' },
+
+  actionRow: { flexDirection: 'row', gap: spacing.sm },
+  actionChip: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: colors.bgElevated, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.panelBorder, paddingVertical: 10,
+  },
+  actionChipLabel: { fontSize: 12, fontWeight: '700' },
 
   mealTypeRow: { flexDirection: 'row', gap: spacing.xs },
   mealPill: {
@@ -848,7 +870,7 @@ const styles = StyleSheet.create({
   resultsLabel: { fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
   foodRow: {
     flexDirection: 'row', alignItems: 'center',
-    gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.sm,
+    gap: spacing.sm, paddingVertical: 10, paddingHorizontal: spacing.sm,
     borderRadius: radius.sm,
   },
   foodRowSelected: { backgroundColor: gradients.brand[0] + '20', borderWidth: 1, borderColor: gradients.brand[0] + '40' },
@@ -858,13 +880,6 @@ const styles = StyleSheet.create({
 
   aiResults: { gap: spacing.sm },
 
-  barcodeBtn: {
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: colors.bgElevated, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.panelBorder,
-    width: 56, height: 56,
-  },
-
   favToggle: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: spacing.sm, paddingHorizontal: spacing.md,
@@ -872,14 +887,6 @@ const styles = StyleSheet.create({
     borderColor: colors.warning + '40', backgroundColor: colors.warning + '0F',
   },
 
-  manualCtaGradient: {
-    borderRadius: radius.lg, borderWidth: 2, borderColor: colors.glow + '50',
-    marginVertical: spacing.md, overflow: 'hidden',
-  },
-  manualCta: {
-    paddingVertical: spacing.lg, paddingHorizontal: spacing.lg,
-    alignItems: 'center', gap: 6,
-  },
   macroInputRow: { flexDirection: 'row', gap: spacing.sm },
   macroInputCell: { flex: 1, gap: 6 },
   macroInputLabel: { fontSize: 11, letterSpacing: 0.5 },
