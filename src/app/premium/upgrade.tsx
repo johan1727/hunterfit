@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, ScrollView, StyleSheet, SafeAreaView, Pressable, Animated,
+  View, ScrollView, StyleSheet, SafeAreaView, Pressable, Animated, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useHunterData } from '../../hooks/useHunterData';
+import { useAuth } from '../../hooks/useAuth';
+import { purchasePlan, restorePurchases, type PlanId } from '../../services/purchases';
 import {
   AuroraBackground, GradientText, SystemWindowPanel, SystemText,
 } from '../../components/system';
@@ -62,6 +64,8 @@ const COMPARISON = [
 export default function UpgradeScreen() {
   const router = useRouter();
   const { profile } = useHunterData();
+  const { userId } = useAuth();
+  const [purchasing, setPurchasing] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('annual');
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -76,6 +80,40 @@ export default function UpgradeScreen() {
   }, []);
 
   const selected = PLANS.find((p) => p.id === selectedPlan)!;
+
+  async function handlePurchase() {
+    if (!userId || purchasing) return;
+    setPurchasing(true);
+    try {
+      const result = await purchasePlan(selectedPlan as PlanId, userId);
+      if (result.success) {
+        Alert.alert(
+          '¡Bienvenido a Hunter Pro! 👑',
+          'Tu membresía está activa. ¡A cazar metas!',
+          [{ text: 'Continuar', onPress: () => router.replace('/(tabs)/home') }]
+        );
+      } else {
+        Alert.alert('Error', result.error ?? 'No se pudo completar la compra');
+      }
+    } finally {
+      setPurchasing(false);
+    }
+  }
+
+  async function handleRestore() {
+    if (!userId || purchasing) return;
+    setPurchasing(true);
+    try {
+      const result = await restorePurchases(userId);
+      if (result.success) {
+        Alert.alert('Compra restaurada', 'Tu acceso premium ha sido restaurado.');
+      } else {
+        Alert.alert('Sin compras', result.error ?? 'No se encontró ninguna compra anterior');
+      }
+    } finally {
+      setPurchasing(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.root}>
@@ -137,11 +175,11 @@ export default function UpgradeScreen() {
 
         {/* CTA */}
         <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-          <Pressable onPress={() => {/* TODO: RevenueCat */}}>
+          <Pressable onPress={handlePurchase} disabled={purchasing}>
             <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
               style={styles.ctaBtn}>
-              <SystemText style={[{ fontSize: 17, fontWeight: '900', color: '#fff' }, numeric]}>
-                Obtener Hunter Pro — {selected.price}{selected.period}
+              <SystemText style={[{ fontSize: 17, fontWeight: '900', color: purchasing ? '#00000080' : '#000' }, numeric]}>
+                {purchasing ? 'Procesando…' : `Obtener Hunter Pro — ${selected.price}${selected.period}`}
               </SystemText>
               {selected.id === 'annual' && (
                 <SystemText style={{ fontSize: 12, color: '#fff', opacity: 0.85 }}>
@@ -185,7 +223,7 @@ export default function UpgradeScreen() {
         </SystemWindowPanel>
 
         {/* Restore */}
-        <Pressable onPress={() => {/* TODO: RevenueCat restore */}} style={{ alignItems: 'center' }}>
+        <Pressable onPress={handleRestore} disabled={purchasing} style={{ alignItems: 'center' }}>
           <SystemText dim style={{ fontSize: 13, textDecorationLine: 'underline' }}>
             Restaurar compra anterior
           </SystemText>
