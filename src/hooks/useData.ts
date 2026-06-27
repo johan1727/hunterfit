@@ -53,34 +53,43 @@ export function useExercises() {
   });
 }
 
-export function useFoodSearch(term: string) {
+export function useFoodSearch(term: string, category?: string) {
   return useQuery({
-    queryKey: ['foods', term],
+    queryKey: ['foods', term, category],
     enabled: term.trim().length >= 2,
     queryFn: async (): Promise<Food[]> => {
-      const { data, error } = await supabase
-        .from('foods')
-        .select('*')
-        .ilike('name_es', `%${term.trim()}%`)
-        .limit(25);
+      let q = supabase.from('foods').select('*').ilike('name_es', `%${term.trim()}%`);
+      if (category && category !== 'all') q = q.eq('category', category);
+      const { data, error } = await q.limit(25);
       if (error) throw error;
       return data as Food[];
     },
   });
 }
 
-export function useDefaultFoods() {
+export function useDefaultFoods(category?: string) {
   return useQuery({
-    queryKey: ['foods-default'],
+    queryKey: ['foods-default', category],
     staleTime: 1000 * 60 * 60,
     queryFn: async (): Promise<Food[]> => {
-      const { data, error } = await supabase
-        .from('foods')
-        .select('*')
-        .order('category')
-        .limit(50);
+      let q = supabase.from('foods').select('*');
+      if (category && category !== 'all') q = q.eq('category', category);
+      const { data, error } = await q.order('name_es').limit(50);
       if (error) throw error;
       return data as Food[];
+    },
+  });
+}
+
+export function useFoodCategories() {
+  return useQuery({
+    queryKey: ['food-categories'],
+    staleTime: Infinity,
+    queryFn: async (): Promise<string[]> => {
+      const { data, error } = await supabase.from('foods').select('category').limit(1000);
+      if (error) throw error;
+      const unique = [...new Set((data ?? []).map((r: any) => r.category).filter(Boolean))].sort();
+      return unique as string[];
     },
   });
 }

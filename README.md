@@ -26,9 +26,16 @@ Elige uno de **6 personajes anime originales** como arquetipo físico y la app g
 
 ### 🥗 Nutrición tipo Fitia
 - Metas calóricas y macros calculadas con **Mifflin-St Jeor** + factor de actividad + objetivo
-- **+200 alimentos LATAM** con macros reales (tacos, frijoles, pollo, tamales…)
+- **5,000+ alimentos LATAM** con macros reales (tacos, frijoles, pollo, tamales, suplementos…)
 - Registro por tiempo de comida (desayuno / comida / cena / snack)
 - Anillo de calorías + barras de progreso por macro
+
+### 🍳 RecipeAI — Recetas personalizadas con IA
+- Genera **3 recetas** adaptadas a tus macros del día con **Gemini 2.5 Flash**
+- Selector de comida tipo "stories" (estilo CREME) con bordes gradiente
+- Hero card con emoji grande, dificultad, stats y macros visuales
+- Sección **"Pregunta al Hunter AI"** para consultas sobre la receta
+- Guarda favoritos (Zustand) y registra en historial (`meal_logs`)
 
 ### 🤖 IA con Gemini (Premium)
 - **Foto de comida → macros**: la Edge Function `analyze-food` identifica alimentos, estima gramos y calcula kcal/proteína/carbs/grasa; tú confirmas y se registra
@@ -145,6 +152,8 @@ Escanea el QR con **Expo Go** (Android) o la app Cámara (iOS).
 - [ ] Pagos reales con RevenueCat
 - [ ] Historial de entrenamientos y gráficas de progreso
 - [ ] Leaderboard entre cazadores
+- [ ] Expandir base de alimentos a 10,000+ (paridad con Fitia)
+- [ ] RecipeAI: foto de comida → macros automáticos
 
 ---
 

@@ -109,6 +109,7 @@ export interface Food {
   carbs_g: number;
   fat_g: number;
   fiber_g: number;
+  icon?: string;
 }
 
 export interface MealLog {

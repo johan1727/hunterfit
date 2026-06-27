@@ -26,6 +26,13 @@
     "plugins": [
       "expo-router",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "HunterFit necesita la cámara para escanear códigos de barras y analizar fotos de comida."
+        }
+      ],
+      "expo-notifications",
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",
@@ -34,7 +41,8 @@
             "imageWidth": 76
           }
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

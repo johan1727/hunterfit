@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, FlatList, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, FlatList, Alert, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../hooks/useAuth';
 import { useDemoStore } from '../../lib/demoStore';
-import { useProfile, useFoodSearch, useDefaultFoods, useGrantXp, useFavorites, useAddFavorite, useRemoveFavorite } from '../../hooks/useData';
+import { useProfile, useFoodSearch, useDefaultFoods, useGrantXp, useFavorites, useAddFavorite, useRemoveFavorite, useFoodCategories } from '../../hooks/useData';
 import { supabase } from '../../lib/supabase';
 import { localDateString } from '../../lib/dates';
 import { analyzeFoodPhoto, type FoodAnalysisResult } from '../../services/ai';
@@ -53,6 +53,23 @@ import { EmptyState } from '../../components/EmptyState';
 import { EMPTY_STATES } from '../../lib/emptyState';
 import type { Food } from '../../types/db';
 
+const CATEGORY_EMOJI: Record<string, string> = {
+  'proteínas': '🥩', 'proteinas': '🥩',
+  'verduras': '🥦',
+  'frutas': '🍎',
+  'lácteos': '🥛', 'lacteos': '🥛',
+  'cereales': '🌾',
+  'snacks': '🍫',
+  'grasas': '🫒',
+  'bebidas': '🥤',
+  'legumbres': '🫘',
+  'platillos': '🍲',
+};
+
+function getCategoryEmoji(cat: string): string {
+  return CATEGORY_EMOJI[cat.toLowerCase()] ?? '🏷️';
+}
+
 const MEAL_TYPES = [
   { key: 'desayuno', label: 'Desayuno', dot: colors.warning },
   { key: 'comida', label: 'Comida', dot: colors.glow },
@@ -71,8 +88,10 @@ export default function SearchFoodScreen() {
   const { data: profile } = useProfile(userId);
   const logDate = params.date ?? localDateString();
   const [searchTerm, setSearchTerm] = useState('');
-  const { data: searchResults = [] } = useFoodSearch(searchTerm);
-  const { data: defaultFoods = [] } = useDefaultFoods();
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const { data: searchResults = [] } = useFoodSearch(searchTerm, selectedCategory);
+  const { data: defaultFoods = [] } = useDefaultFoods(selectedCategory);
+  const { data: dbCategories = [] } = useFoodCategories();
   // Mostrar resultados de búsqueda si hay (≥2 caracteres), si no mostrar alimentos por defecto
   const foods = searchTerm.length >= 2 ? searchResults : defaultFoods;
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
@@ -370,6 +389,47 @@ export default function SearchFoodScreen() {
           onChangeText={setSearchTerm}
         />
 
+        {/* Categorías de alimentos */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 4, gap: 8 }}
+        >
+          {/* Pill "Todos" siempre primero */}
+          <Pressable
+            onPress={() => setSelectedCategory('all')}
+            style={[
+              styles.catPill,
+              selectedCategory === 'all' && { borderColor: colors.accent, backgroundColor: colors.accent + '22' },
+            ]}
+          >
+            <Text style={{ fontSize: 13 }}>⚡</Text>
+            <SystemText style={[styles.catPillText, { color: selectedCategory === 'all' ? colors.accent : colors.textDim }]}>
+              Todos
+            </SystemText>
+          </Pressable>
+
+          {/* Categorías reales de la BD */}
+          {dbCategories.map(cat => {
+            const isActive = selectedCategory === cat;
+            return (
+              <Pressable
+                key={cat}
+                onPress={() => setSelectedCategory(cat)}
+                style={[
+                  styles.catPill,
+                  isActive && { borderColor: colors.accent, backgroundColor: colors.accent + '22' },
+                ]}
+              >
+                <Text style={{ fontSize: 13 }}>{getCategoryEmoji(cat)}</Text>
+                <SystemText style={[styles.catPillText, { color: isActive ? colors.accent : colors.textDim }]}>
+                  {cat}
+                </SystemText>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
         {/* Resultados IA */}
         {aiResults && (
           <SystemWindowPanel style={styles.aiResults}>
@@ -666,6 +726,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgElevated, borderRadius: radius.md,
     padding: spacing.md, alignItems: 'center', gap: 4,
   },
+
+  catPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: radius.pill, borderWidth: 1.5,
+    borderColor: colors.panelBorder, backgroundColor: 'transparent',
+  },
+  catPillText: { fontSize: 12, fontWeight: '600' },
 
   selectedCard: { gap: spacing.md },
   selectedName: { fontSize: 24, fontWeight: '900' },

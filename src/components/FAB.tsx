@@ -32,6 +32,8 @@ const styles = StyleSheet.create({
     bottom: 96,
     right: 20,
     zIndex: 99,
+    width: 56, height: 56,
+    borderRadius: radius.pill,
     shadowColor: '#5B7CFF',
     shadowOpacity: 0.5,
     shadowRadius: 16,
