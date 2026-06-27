@@ -34,11 +34,12 @@ export async function restorePurchases(userId: string): Promise<PurchaseResult> 
 
   // Mock: en producción llamar Purchases.restorePurchases()
   // Por ahora: verificar en Supabase si ya tiene premium
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .select('is_premium')
     .eq('id', userId)
     .single();
+  if (error) return { success: false, error: error.message };
 
   if (data?.is_premium) {
     return { success: true };

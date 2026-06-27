@@ -178,7 +178,7 @@ export default function UpgradeScreen() {
           <Pressable onPress={handlePurchase} disabled={purchasing}>
             <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
               style={styles.ctaBtn}>
-              <SystemText style={[{ fontSize: 17, fontWeight: '900', color: purchasing ? '#00000080' : '#000' }, numeric]}>
+              <SystemText style={[{ fontSize: 17, fontWeight: '900', color: '#000' }, numeric]}>
                 {purchasing ? 'Procesando…' : `Obtener Hunter Pro — ${selected.price}${selected.period}`}
               </SystemText>
               {selected.id === 'annual' && (

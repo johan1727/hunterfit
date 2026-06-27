@@ -24,9 +24,15 @@ create table if not exists user_badges (
 
 alter table badges enable row level security;
 alter table user_badges enable row level security;
-create policy "read badges" on badges for select to authenticated using (true);
-create policy "own user_badges" on user_badges for all to authenticated
-  using (user_id = auth.uid()) with check (user_id = auth.uid());
+do $$ begin
+  create policy "read badges" on badges for select to authenticated using (true);
+exception when duplicate_object then null;
+end $$;
+do $$ begin
+  create policy "own user_badges" on user_badges for all to authenticated
+    using (user_id = auth.uid()) with check (user_id = auth.uid());
+exception when duplicate_object then null;
+end $$;
 
 -- Seed: definiciones de badges (slugs que usa badges.ts)
 insert into badges (slug, name_es, description_es, icon, category, xp_reward, rarity) values
@@ -70,8 +76,11 @@ create table if not exists shopping_items (
 );
 
 alter table shopping_items enable row level security;
-create policy "own shopping_items" on shopping_items for all to authenticated
-  using (user_id = auth.uid()) with check (user_id = auth.uid());
+do $$ begin
+  create policy "own shopping_items" on shopping_items for all to authenticated
+    using (user_id = auth.uid()) with check (user_id = auth.uid());
+exception when duplicate_object then null;
+end $$;
 
 -- ============ PROGRESS PHOTOS ============
 create table if not exists progress_photos (
@@ -84,8 +93,11 @@ create table if not exists progress_photos (
 );
 
 alter table progress_photos enable row level security;
-create policy "own progress_photos" on progress_photos for all to authenticated
-  using (user_id = auth.uid()) with check (user_id = auth.uid());
+do $$ begin
+  create policy "own progress_photos" on progress_photos for all to authenticated
+    using (user_id = auth.uid()) with check (user_id = auth.uid());
+exception when duplicate_object then null;
+end $$;
 
 -- ============ FOODS.ICON (columna para emojis) ============
 alter table foods add column if not exists icon text;
@@ -95,15 +107,18 @@ insert into storage.buckets (id, name, public)
   values ('hunterfit-body-photos', 'hunterfit-body-photos', false)
 on conflict (id) do nothing;
 
-create policy "own hunterfit body photos" on storage.objects for all to authenticated
-  using (
-    bucket_id = 'hunterfit-body-photos'
-    and (storage.foldername(name))[1] = auth.uid()::text
-  )
-  with check (
-    bucket_id = 'hunterfit-body-photos'
-    and (storage.foldername(name))[1] = auth.uid()::text
-  );
+do $$ begin
+  create policy "own hunterfit body photos" on storage.objects for all to authenticated
+    using (
+      bucket_id = 'hunterfit-body-photos'
+      and (storage.foldername(name))[1] = auth.uid()::text
+    )
+    with check (
+      bucket_id = 'hunterfit-body-photos'
+      and (storage.foldername(name))[1] = auth.uid()::text
+    );
+exception when duplicate_object then null;
+end $$;
 
 -- ============ RPC get_leaderboard ============
 create or replace function get_leaderboard(limit_n integer default 50)
