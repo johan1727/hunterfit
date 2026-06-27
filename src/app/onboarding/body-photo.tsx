@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../hooks/useAuth';
 import { useUpdateProfile } from '../../hooks/useData';
+import { useHunterData } from '../../hooks/useHunterData';
 import { supabase } from '../../lib/supabase';
 import { base64ToUint8Array } from '../../lib/base64';
 import { analyzeBodyPhoto } from '../../services/ai';
@@ -23,6 +24,8 @@ import {
 export default function BodyPhotoScreen() {
   const router = useRouter();
   const { userId } = useAuth();
+  const { profile } = useHunterData();
+  const isPremium = profile?.is_premium ?? false;
   const updateProfile = useUpdateProfile(userId);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
@@ -97,10 +100,16 @@ export default function BodyPhotoScreen() {
                 <Image source={{ uri: photoUri }} style={styles.preview} />
                 <SystemButton title="Cambiar foto" variant="ghost" onPress={pickImage} disabled={uploading} />
                 <SystemButton
-                  title={uploading ? 'Analizando…' : '✦ Analizar con IA'}
+                  title={
+                    uploading
+                      ? 'Analizando…'
+                      : isPremium
+                        ? '✦ Analizar con IA'
+                        : '👑 Analizar con IA (Premium)'
+                  }
                   variant="gradient"
                   loading={uploading}
-                  onPress={handleUploadAndAnalyze}
+                  onPress={isPremium ? handleUploadAndAnalyze : () => router.push('/premium/upgrade')}
                 />
               </>
             ) : (
