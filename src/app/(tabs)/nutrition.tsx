@@ -3,13 +3,14 @@ import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, Text, Alert } fr
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useHunterData } from '../../hooks/useHunterData';
 import { useWaterToday, useAddWater, useCopyYesterday, useMealLogs } from '../../hooks/useData';
 import { localDateString } from '../../lib/dates';
 import { colors, gradients, radius, spacing } from '../../theme/system';
 import {
   AuroraBackground, GradientText, Pill, ProgressBar,
-  SystemPanel, SystemText, SystemButton,
+  SystemPanel, SystemWindowPanel, SystemText, SystemButton,
 } from '../../components/system';
 import { FAB } from '../../components/FAB';
 import { MenuList } from '../../components/MenuList';
@@ -124,7 +125,7 @@ export default function NutritionScreen() {
               onPress={() => setSelectedDate((d) => offsetDate(d, -1))}
               style={({ pressed }) => [styles.dateArrow, pressed && { opacity: 0.5 }]}
             >
-              <Text style={styles.dateArrowText}>‹</Text>
+              <Ionicons name="chevron-back" size={20} color={colors.text} />
             </Pressable>
             <Pressable onPress={() => setSelectedDate(today)} style={styles.datePill}>
               <Text style={styles.datePillText}>
@@ -136,14 +137,14 @@ export default function NutritionScreen() {
               style={({ pressed }) => [styles.dateArrow, pressed && { opacity: 0.5 }, isToday && { opacity: 0.25 }]}
               disabled={isToday}
             >
-              <Text style={styles.dateArrowText}>›</Text>
+              <Ionicons name="chevron-forward" size={20} color={colors.text} />
             </Pressable>
           </View>
         </Animated.View>
 
         {/* Hero: calorías */}
         <Animated.View entering={FadeInDown.delay(80).springify()}>
-        <SystemPanel>
+        <SystemWindowPanel>
           <View style={styles.kcalRow}>
             <CalorieRing consumed={totals.kcal} target={targets.kcal} size={120} />
 
@@ -154,7 +155,7 @@ export default function NutritionScreen() {
               <ProgressBar progress={kcalPct} height={6} />
             </View>
           </View>
-        </SystemPanel>
+        </SystemWindowPanel>
         </Animated.View>
 
         {/* Macros */}
@@ -203,9 +204,14 @@ export default function NutritionScreen() {
               disabled={copyingYesterday}
               style={({ pressed }) => [styles.copyYesterdayBtn, pressed && { opacity: 0.6 }]}
             >
-              <Text style={styles.copyYesterdayText}>
-                {copyingYesterday ? 'Copiando…' : '↩ Copiar comidas de ayer'}
-              </Text>
+              {copyingYesterday ? (
+                <Text style={styles.copyYesterdayText}>Copiando…</Text>
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="arrow-undo-outline" size={15} color={colors.textDim} />
+                  <Text style={styles.copyYesterdayText}>Copiar comidas de ayer</Text>
+                </View>
+              )}
             </Pressable>
           </Animated.View>
         )}
@@ -333,7 +339,7 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.md, paddingTop: spacing.lg, gap: spacing.sm, paddingBottom: 100 },
 
   header: { gap: spacing.sm, marginBottom: spacing.sm },
-  title: { fontSize: 38, lineHeight: 40 },
+  title: { fontSize: 46, lineHeight: 48 },
 
   dateNav: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
@@ -344,7 +350,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgElevated, borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.panelBorder,
   },
-  dateArrowText: { color: colors.text, fontSize: 20, fontWeight: '300', lineHeight: 24 },
   datePill: {
     paddingHorizontal: spacing.md, paddingVertical: 6,
     backgroundColor: colors.bgElevated, borderRadius: radius.pill,

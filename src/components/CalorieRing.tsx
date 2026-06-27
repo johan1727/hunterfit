@@ -33,6 +33,19 @@ export function CalorieRing({ consumed, target, size = 160 }: Props) {
           stroke={colors.panelBorder} strokeWidth={strokeWidth}
           fill="none"
         />
+        {/* Halo neón (bloom difuso bajo el arco; oculto en sobreconsumo) */}
+        {!over && dash > 0 && (
+          <Circle
+            cx={size / 2} cy={size / 2} r={radius}
+            stroke={colors.glow}
+            strokeWidth={strokeWidth + 8}
+            fill="none"
+            opacity={0.3}
+            strokeDasharray={`${dash} ${circumference}`}
+            strokeLinecap="round"
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          />
+        )}
         {/* Progress */}
         <Circle
           cx={size / 2} cy={size / 2} r={radius}

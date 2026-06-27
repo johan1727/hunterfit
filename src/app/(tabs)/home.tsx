@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, ScrollView, StyleSheet, SafeAreaView, Text, Pressable } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -193,7 +193,7 @@ export default function HomeScreen() {
                 </SystemText>
               </View>
               <View style={styles.streakBadge}>
-                <SystemText style={{ fontSize: 22 }}>🔥</SystemText>
+                <Ionicons name="flame" size={22} color={colors.warning} />
                 <SystemText style={{ fontSize: 18, fontWeight: '900', color: colors.warning }}>
                   {profile.streak_days}
                 </SystemText>
@@ -214,11 +214,11 @@ export default function HomeScreen() {
                 value={questTab}
                 onChange={setQuestTab}
                 options={[
-                  { key: 'daily', label: `⚔️ Hoy (${activeQuests.length})` },
-                  { key: 'weekly', label: `📅 Semana (${activeWeeklyQuests.length})` },
+                  { key: 'daily', label: `Hoy (${activeQuests.length})`, icon: 'flash-outline' },
+                  { key: 'weekly', label: `Semana (${activeWeeklyQuests.length})`, icon: 'calendar-outline' },
                 ]}
               />
-              <View style={{ marginTop: spacing.sm }}>
+              <Animated.View key={questTab} entering={FadeIn.duration(180)} style={{ marginTop: spacing.sm }}>
                 {questTab === 'daily'
                   ? activeQuests.map((quest) => (
                       <View key={quest.id} style={styles.questRow}>
@@ -267,7 +267,7 @@ export default function HomeScreen() {
                     {questTab === 'daily' ? 'Sin misiones de hoy' : 'Sin misiones semanales'}
                   </SystemText>
                 )}
-              </View>
+              </Animated.View>
             </View>
           </Animated.View>
         )}

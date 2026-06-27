@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, FlatList, Alert, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../hooks/useAuth';
@@ -407,7 +408,7 @@ export default function SearchFoodScreen() {
               onPress={() => router.push(`/nutrition/barcode?date=${logDate}&type=${mealType}`)}
               style={styles.barcodeBtn}
             >
-              <SystemText style={{ fontSize: 22 }}>▦</SystemText>
+              <Ionicons name="barcode-outline" size={22} color={colors.text} />
               <SystemText dim style={{ fontSize: 10, marginTop: 2 }}>Barcode</SystemText>
             </Pressable>
           </View>
@@ -447,10 +448,13 @@ export default function SearchFoodScreen() {
             onPress={() => setShowFavorites((v) => !v)}
             style={styles.favToggle}
           >
-            <SystemText style={{ fontSize: 13, color: colors.warning, fontWeight: '700' }}>
-              ⭐ Mis favoritos ({favorites.data!.length})
-            </SystemText>
-            <SystemText dim style={{ fontSize: 12 }}>{showFavorites ? '▲' : '▼'}</SystemText>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="star" size={14} color={colors.warning} />
+              <SystemText style={{ fontSize: 13, color: colors.warning, fontWeight: '700' }}>
+                Mis favoritos ({favorites.data!.length})
+              </SystemText>
+            </View>
+            <Ionicons name={showFavorites ? 'chevron-up' : 'chevron-down'} size={14} color={colors.textDim} />
           </Pressable>
         )}
         {showFavorites && (favorites.data?.length ?? 0) > 0 && (
@@ -461,7 +465,7 @@ export default function SearchFoodScreen() {
                 style={styles.foodRow}
                 onPress={() => handleAddFromFavorite(fav)}
               >
-                <SystemText style={{ fontSize: 20 }}>⭐</SystemText>
+                <Ionicons name="star" size={18} color={colors.warning} />
                 <View style={{ flex: 1 }}>
                   <SystemText style={styles.foodName}>{fav.name}</SystemText>
                   <SystemText dim style={styles.foodMeta}>
@@ -469,7 +473,7 @@ export default function SearchFoodScreen() {
                   </SystemText>
                 </View>
                 <Pressable onPress={() => removeFavorite.mutate(fav.id)} hitSlop={8}>
-                  <SystemText style={{ color: colors.danger, fontSize: 16 }}>✕</SystemText>
+                  <Ionicons name="close" size={16} color={colors.danger} />
                 </Pressable>
               </Pressable>
             ))}
@@ -593,7 +597,10 @@ export default function SearchFoodScreen() {
         {/* Recientes (search-first: antes de Populares, sin búsqueda ni categoría) */}
         {searchTerm.length < 2 && selectedCategory === 'all' && recentFoods.length > 0 && (
           <SystemPanel style={styles.resultsPanel}>
-            <SystemText dim style={styles.resultsLabel}>🕐 Recientes</SystemText>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Ionicons name="time-outline" size={13} color={colors.textDim} />
+              <SystemText dim style={styles.resultsLabel}>Recientes</SystemText>
+            </View>
             {recentFoods.map((item) => (
               <Pressable
                 key={`recent-${item.id}`}
@@ -605,7 +612,7 @@ export default function SearchFoodScreen() {
                   <SystemText style={styles.foodName}>{item.name_es}</SystemText>
                   <SystemText dim style={styles.foodMeta}>{item.kcal} kcal · porción {item.serving_g}g</SystemText>
                 </View>
-                <SystemText style={{ color: colors.glow, fontSize: 18 }}>›</SystemText>
+                <Ionicons name="chevron-forward" size={18} color={colors.glow} />
               </Pressable>
             ))}
           </SystemPanel>
@@ -642,11 +649,13 @@ export default function SearchFoodScreen() {
                     onPress={(e) => { e.stopPropagation(); toggleFavorite(item); }}
                     hitSlop={8}
                   >
-                    <SystemText style={{ fontSize: 18, color: isFavorite(item.id) ? colors.warning : colors.textFaint }}>
-                      {isFavorite(item.id) ? '⭐' : '☆'}
-                    </SystemText>
+                    <Ionicons
+                      name={isFavorite(item.id) ? 'star' : 'star-outline'}
+                      size={18}
+                      color={isFavorite(item.id) ? colors.warning : colors.textFaint}
+                    />
                   </Pressable>
-                  <SystemText style={{ color: colors.glow, fontSize: 18 }}>›</SystemText>
+                  <Ionicons name="chevron-forward" size={18} color={colors.glow} />
                 </Pressable>
               )}
             />

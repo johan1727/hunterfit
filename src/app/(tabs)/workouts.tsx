@@ -4,6 +4,7 @@ import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } fr
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useHunterData } from '../../hooks/useHunterData';
 import { useWeekWorkouts } from '../../hooks/useData';
@@ -162,7 +163,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: spacing.md, paddingTop: spacing.lg, gap: spacing.sm, paddingBottom: 100 },
   header: { gap: 6, marginBottom: spacing.sm },
-  title: { fontSize: 38, lineHeight: 40 },
+  title: { fontSize: 46, lineHeight: 48 },
 
   weekProgress: { gap: 6, marginTop: spacing.sm },
   weekBarTrack: { height: 6, backgroundColor: colors.bgElevated, borderRadius: 3, overflow: 'hidden' },
@@ -183,7 +184,6 @@ const styles = StyleSheet.create({
   routineName: { color: colors.text, fontWeight: '800', fontSize: 18 },
   routineRight: { alignItems: 'center', gap: 2, paddingTop: 2 },
   exCount: { color: colors.glow, fontWeight: '900', fontSize: 22 },
-  arrow: { color: colors.textFaint, fontSize: 22, marginTop: 4 },
 
   exPreview: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: spacing.sm },
   exTag: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.bgElevated, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 3 },
@@ -254,7 +254,7 @@ function RoutineCard({
         <View style={styles.routineRight}>
           <Text style={styles.exCount}>{routine.routine_exercises.length}</Text>
           <SystemText dim style={{ fontSize: 10 }}>ejerc.</SystemText>
-          {showArrow && <Text style={styles.arrow}>›</Text>}
+          {showArrow && <Ionicons name="chevron-forward" size={22} color={colors.textFaint} style={{ marginTop: 4 }} />}
         </View>
       </Animated.View>
     </Pressable>
