@@ -76,9 +76,76 @@ export function useDefaultFoods(category?: string) {
       if (category && category !== 'all') q = q.eq('category', category);
       // Más resultados al filtrar por categoría para que las subcategorías tengan datos
       const limit = category && category !== 'all' ? 150 : 50;
-      const { data, error } = await q.order('name_es').limit(limit);
+      // Con categoría: alfabético dentro de la subcategoría.
+      // Sin categoría: por id (los primeros seed son los más comunes) para evitar
+      // amontonar todos los "Aceite de…" al inicio.
+      q = (category && category !== 'all')
+        ? q.order('name_es')
+        : q.order('id', { ascending: true });
+      const { data, error } = await q.limit(limit);
       if (error) throw error;
       return data as Food[];
+    },
+  });
+}
+
+export function useWeekWorkouts(userId: string | null) {
+  return useQuery({
+    queryKey: ['week-workouts', userId],
+    enabled: !!userId,
+    staleTime: 60 * 1000,
+    queryFn: async (): Promise<number> => {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select('completed_at')
+        .eq('user_id', userId!)
+        .gte('completed_at', weekAgo.toISOString());
+      if (error) throw error;
+      // Días únicos con al menos una sesión completada en los últimos 7 días
+      const days = new Set(
+        (data ?? [])
+          .map((r: any) => r.completed_at)
+          .filter(Boolean)
+          .map((ts: string) => ts.split('T')[0])
+      );
+      return days.size;
+    },
+  });
+}
+
+export function useRecentFoods(userId: string | null) {
+  return useQuery({
+    queryKey: ['recent-foods', userId],
+    enabled: !!userId,
+    staleTime: 60 * 1000,
+    queryFn: async (): Promise<Food[]> => {
+      const { data: logs, error } = await supabase
+        .from('meal_logs')
+        .select('food_id, created_at')
+        .eq('user_id', userId!)
+        .not('food_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      // IDs únicos preservando orden (más reciente primero)
+      const seen = new Set<number>();
+      const ids: number[] = [];
+      for (const l of logs ?? []) {
+        if (l.food_id != null && !seen.has(l.food_id)) {
+          seen.add(l.food_id);
+          ids.push(l.food_id);
+        }
+        if (ids.length >= 8) break;
+      }
+      if (ids.length === 0) return [];
+      const { data: foods, error: e2 } = await supabase
+        .from('foods').select('*').in('id', ids);
+      if (e2) throw e2;
+      // Reordenar según el orden de ids (recientes primero)
+      const byId = new Map((foods ?? []).map((f: any) => [f.id, f]));
+      return ids.map((id) => byId.get(id)).filter(Boolean) as Food[];
     },
   });
 }

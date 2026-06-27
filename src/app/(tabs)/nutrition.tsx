@@ -13,6 +13,7 @@ import {
 } from '../../components/system';
 import { FAB } from '../../components/FAB';
 import { MenuList } from '../../components/MenuList';
+import { CalorieRing } from '../../components/CalorieRing';
 
 const MEAL_LABELS: Record<string, string> = {
   desayuno: 'Desayuno',
@@ -144,19 +145,7 @@ export default function NutritionScreen() {
         <Animated.View entering={FadeInDown.delay(80).springify()}>
         <SystemPanel>
           <View style={styles.kcalRow}>
-            {/* Círculo */}
-            <View style={styles.ringWrap}>
-              <LinearGradient
-                colors={kcalPct >= 1 ? [colors.success, colors.success] : gradients.brand}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={styles.ringOuter}
-              >
-                <View style={styles.ringInner}>
-                  <Text style={styles.ringKcal}>{totals.kcal}</Text>
-                  <Text style={styles.ringLabel}>kcal</Text>
-                </View>
-              </LinearGradient>
-            </View>
+            <CalorieRing consumed={totals.kcal} target={targets.kcal} size={120} />
 
             {/* Info */}
             <View style={{ flex: 1, gap: 8 }}>
@@ -365,14 +354,6 @@ const styles = StyleSheet.create({
   datePillText: { color: colors.text, fontSize: 13, fontWeight: '700' },
 
   kcalRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
-  ringWrap: { flexShrink: 0 },
-  ringOuter: { width: 90, height: 90, borderRadius: 45, padding: 3 },
-  ringInner: {
-    flex: 1, borderRadius: 42, backgroundColor: colors.panel,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  ringKcal: { color: colors.text, fontSize: 20, fontWeight: '900' },
-  ringLabel: { color: colors.textDim, fontSize: 10, marginTop: 1 },
 
   sectionLabel: { fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: colors.textFaint, marginBottom: spacing.md },
 

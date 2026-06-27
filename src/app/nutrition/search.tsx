@@ -5,7 +5,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../hooks/useAuth';
 import { useDemoStore } from '../../lib/demoStore';
-import { useProfile, useFoodSearch, useDefaultFoods, useGrantXp, useFavorites, useAddFavorite, useRemoveFavorite, useFoodCategories } from '../../hooks/useData';
+import { useProfile, useFoodSearch, useDefaultFoods, useGrantXp, useFavorites, useAddFavorite, useRemoveFavorite, useFoodCategories, useRecentFoods } from '../../hooks/useData';
 import { supabase } from '../../lib/supabase';
 import { localDateString } from '../../lib/dates';
 import { analyzeFoodPhoto, type FoodAnalysisResult } from '../../services/ai';
@@ -51,6 +51,7 @@ import {
 } from '../../components/system';
 import { EmptyState } from '../../components/EmptyState';
 import { EMPTY_STATES } from '../../lib/emptyState';
+import { ListSkeleton } from '../../components/ListSkeleton';
 import type { Food } from '../../types/db';
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -170,9 +171,10 @@ export default function SearchFoodScreen() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSubcat, setSelectedSubcat] = useState<string | null>(null);
-  const { data: searchResults = [] } = useFoodSearch(searchTerm, selectedCategory);
+  const { data: searchResults = [], isLoading: searching } = useFoodSearch(searchTerm, selectedCategory);
   const { data: defaultFoods = [] } = useDefaultFoods(selectedCategory);
   const { data: dbCategories = [] } = useFoodCategories();
+  const { data: recentFoods = [] } = useRecentFoods(isDemo ? null : userId);
 
   function selectCategory(cat: string) {
     setSelectedCategory(cat);
@@ -588,8 +590,33 @@ export default function SearchFoodScreen() {
           </SystemWindowPanel>
         )}
 
+        {/* Recientes (search-first: antes de Populares, sin búsqueda ni categoría) */}
+        {searchTerm.length < 2 && selectedCategory === 'all' && recentFoods.length > 0 && (
+          <SystemPanel style={styles.resultsPanel}>
+            <SystemText dim style={styles.resultsLabel}>🕐 Recientes</SystemText>
+            {recentFoods.map((item) => (
+              <Pressable
+                key={`recent-${item.id}`}
+                style={styles.foodRow}
+                onPress={() => { setSelectedFood(item); setQuantity(item.serving_g.toString()); }}
+              >
+                <SystemText style={{ fontSize: 22 }}>{(item as any).icon ?? '🍽️'}</SystemText>
+                <View style={{ flex: 1 }}>
+                  <SystemText style={styles.foodName}>{item.name_es}</SystemText>
+                  <SystemText dim style={styles.foodMeta}>{item.kcal} kcal · porción {item.serving_g}g</SystemText>
+                </View>
+                <SystemText style={{ color: colors.glow, fontSize: 18 }}>›</SystemText>
+              </Pressable>
+            ))}
+          </SystemPanel>
+        )}
+
         {/* Lista de resultados o sugeridos */}
-        {foods.length > 0 ? (
+        {searchTerm.length >= 2 && searching ? (
+          <SystemPanel style={styles.resultsPanel}>
+            <ListSkeleton rows={5} />
+          </SystemPanel>
+        ) : foods.length > 0 ? (
           <SystemPanel style={styles.resultsPanel}>
             <SystemText dim style={styles.resultsLabel}>
               {searchTerm.length >= 2 ? `${foods.length} resultado${foods.length !== 1 ? 's' : ''}` : 'Populares'}

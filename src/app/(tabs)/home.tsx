@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { View, ScrollView, StyleSheet, SafeAreaView, Text, Pressable } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useHunterData } from '../../hooks/useHunterData';
 import { useDemoStore } from '../../lib/demoStore';
 import { useWeeklyQuests } from '../../hooks/useData';
@@ -18,6 +20,7 @@ import {
   SystemWindowPanel,
 } from '../../components/system';
 import { CalorieRing } from '../../components/CalorieRing';
+import { SegmentedTabs } from '../../components/SegmentedTabs';
 import { FAB } from '../../components/FAB';
 import { nextRankInfo } from '../../constants/game';
 
@@ -27,6 +30,7 @@ export default function HomeScreen() {
   const isDemo = useDemoStore((s) => s.isDemo);
   const exitDemo = useDemoStore((s) => s.exitDemo);
   const weeklyQuestsQuery = useWeeklyQuests(isDemo ? null : userId, profile?.level);
+  const [questTab, setQuestTab] = useState<'daily' | 'weekly'>('daily');
 
   if (!profile) {
     return (
@@ -113,13 +117,13 @@ export default function HomeScreen() {
         {/* ── SECCIÓN 2: ACCIONES RÁPIDAS ── */}
         <Animated.View entering={FadeInDown.delay(130).springify()} style={styles.quickRow}>
           <QuickAction
-            icon="🍽️"
+            icon="restaurant"
             label={"Registrar\ncomida"}
             onPress={() => pressHaptic(() => router.push('/nutrition/search'))}
             gradient
           />
           <QuickAction
-            icon="💪"
+            icon="barbell"
             label={nextRoutine ? `Día 1\n${nextRoutine.name}` : 'Ver\nrutinas'}
             onPress={() => pressHaptic(() =>
               nextRoutine
@@ -128,7 +132,7 @@ export default function HomeScreen() {
             )}
           />
           <QuickAction
-            icon="📊"
+            icon="stats-chart"
             label={"Mi\nprogreso"}
             onPress={() => pressHaptic(() => router.push('/(tabs)/profile'))}
           />
@@ -202,62 +206,68 @@ export default function HomeScreen() {
           </SystemPanel>
         </Animated.View>
 
-        {/* ── SECCIÓN 5: MISIONES DIARIAS ── */}
-        {activeQuests.length > 0 && (
+        {/* ── SECCIÓN 5: MISIONES (Hoy / Semana) ── */}
+        {(activeQuests.length > 0 || activeWeeklyQuests.length > 0) && (
           <Animated.View entering={FadeInDown.delay(340).springify()}>
             <View style={styles.section}>
-              <SystemText style={styles.sectionTitle}>⚔️ Misiones de hoy</SystemText>
-              {activeQuests.map((quest) => (
-                <View key={quest.id} style={styles.questRow}>
-                  <View style={styles.questDot} />
-                  <SystemText style={{ flex: 1, fontSize: 14 }}>{quest.description_es}</SystemText>
-                  <LinearGradient
-                    colors={gradients.mana}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                    style={styles.xpBadge}
-                  >
-                    <Text style={styles.xpBadgeText}>+{quest.xp_reward} XP</Text>
-                  </LinearGradient>
-                </View>
-              ))}
-            </View>
-          </Animated.View>
-        )}
-
-        {/* ── SECCIÓN 6: MISIONES SEMANALES ── */}
-        {activeWeeklyQuests.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(400).springify()}>
-            <View style={styles.section}>
-              <SystemText style={styles.sectionTitle}>📅 Misiones semanales</SystemText>
-              {activeWeeklyQuests.map((quest) => (
-                <View key={quest.id} style={styles.questRow}>
-                  <LinearGradient
-                    colors={gradients.brand as any}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                    style={styles.weeklyDot}
-                  />
-                  <View style={{ flex: 1, gap: 4 }}>
-                    <SystemText style={{ fontSize: 14 }}>{quest.description_es}</SystemText>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <View style={[styles.weeklyBar, { width: 100 }]}>
-                        <View style={[styles.weeklyBarFill, {
-                          width: `${Math.min(100, ((quest.progress ?? 0) / quest.target) * 100)}%` as any,
-                        }]} />
+              <SegmentedTabs
+                value={questTab}
+                onChange={setQuestTab}
+                options={[
+                  { key: 'daily', label: `⚔️ Hoy (${activeQuests.length})` },
+                  { key: 'weekly', label: `📅 Semana (${activeWeeklyQuests.length})` },
+                ]}
+              />
+              <View style={{ marginTop: spacing.sm }}>
+                {questTab === 'daily'
+                  ? activeQuests.map((quest) => (
+                      <View key={quest.id} style={styles.questRow}>
+                        <View style={styles.questDot} />
+                        <SystemText style={{ flex: 1, fontSize: 14 }}>{quest.description_es}</SystemText>
+                        <LinearGradient
+                          colors={gradients.mana}
+                          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                          style={styles.xpBadge}
+                        >
+                          <Text style={styles.xpBadgeText}>+{quest.xp_reward} XP</Text>
+                        </LinearGradient>
                       </View>
-                      <SystemText dim style={{ fontSize: 11 }}>
-                        {quest.progress ?? 0}/{quest.target}
-                      </SystemText>
-                    </View>
-                  </View>
-                  <LinearGradient
-                    colors={gradients.brand as any}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                    style={styles.xpBadge}
-                  >
-                    <Text style={styles.xpBadgeText}>+{quest.xp_reward} XP</Text>
-                  </LinearGradient>
-                </View>
-              ))}
+                    ))
+                  : activeWeeklyQuests.map((quest) => (
+                      <View key={quest.id} style={styles.questRow}>
+                        <LinearGradient
+                          colors={gradients.brand as any}
+                          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                          style={styles.weeklyDot}
+                        />
+                        <View style={{ flex: 1, gap: 4 }}>
+                          <SystemText style={{ fontSize: 14 }}>{quest.description_es}</SystemText>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <View style={[styles.weeklyBar, { width: 100 }]}>
+                              <View style={[styles.weeklyBarFill, {
+                                width: `${Math.min(100, ((quest.progress ?? 0) / quest.target) * 100)}%` as any,
+                              }]} />
+                            </View>
+                            <SystemText dim style={{ fontSize: 11 }}>
+                              {quest.progress ?? 0}/{quest.target}
+                            </SystemText>
+                          </View>
+                        </View>
+                        <LinearGradient
+                          colors={gradients.brand as any}
+                          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                          style={styles.xpBadge}
+                        >
+                          <Text style={styles.xpBadgeText}>+{quest.xp_reward} XP</Text>
+                        </LinearGradient>
+                      </View>
+                    ))}
+                {(questTab === 'daily' ? activeQuests : activeWeeklyQuests).length === 0 && (
+                  <SystemText dim style={{ fontSize: 13, textAlign: 'center', paddingVertical: spacing.md }}>
+                    {questTab === 'daily' ? 'Sin misiones de hoy' : 'Sin misiones semanales'}
+                  </SystemText>
+                )}
+              </View>
             </View>
           </Animated.View>
         )}
@@ -299,7 +309,7 @@ const mbStyles = StyleSheet.create({
 });
 
 function QuickAction({ icon, label, onPress, gradient }: {
-  icon: string; label: string; onPress: () => void; gradient?: boolean;
+  icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; gradient?: boolean;
 }) {
   return (
     <Pressable
@@ -312,12 +322,12 @@ function QuickAction({ icon, label, onPress, gradient }: {
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={qaStyles.btn}
         >
-          <Text style={qaStyles.icon}>{icon}</Text>
+          <Ionicons name={icon} size={22} color="#fff" />
           <Text style={[qaStyles.label, { color: '#fff' }]}>{label}</Text>
         </LinearGradient>
       ) : (
         <View style={[qaStyles.btn, qaStyles.btnGhost]}>
-          <Text style={qaStyles.icon}>{icon}</Text>
+          <Ionicons name={icon} size={22} color={colors.glow} />
           <Text style={qaStyles.label}>{label}</Text>
         </View>
       )}
@@ -335,7 +345,6 @@ const qaStyles = StyleSheet.create({
     backgroundColor: colors.bgElevated,
     borderWidth: 1, borderColor: colors.panelBorder,
   },
-  icon: { fontSize: 22 },
   label: { fontSize: 11, fontWeight: '600', color: colors.textDim, textAlign: 'center', lineHeight: 15 },
 });
 

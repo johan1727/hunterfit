@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useQueryClient } from '@tanstack/react-query';
 import { useHunterData } from '../../hooks/useHunterData';
+import { useWeekWorkouts } from '../../hooks/useData';
 import { useDemoStore } from '../../lib/demoStore';
 import { regeneratePlan } from '../../services/routines';
 import { supabase } from '../../lib/supabase';
@@ -17,6 +18,7 @@ import { EMPTY_STATES } from '../../lib/emptyState';
 export default function WorkoutsScreen() {
   const router = useRouter();
   const { profile, routines, isDemo, userId } = useHunterData();
+  const { data: completedDays = 0 } = useWeekWorkouts(isDemo ? null : userId);
   const [generating, setGenerating] = useState(false);
   const exitDemo = useDemoStore((s) => s.exitDemo);
   const queryClient = useQueryClient();
@@ -70,6 +72,22 @@ export default function WorkoutsScreen() {
               ? `${routines.reduce((s, r) => s + r.routine_exercises.length, 0)} ejercicios totales`
               : 'Genera tu primer plan personalizado'}
           </SystemText>
+
+          {/* Progreso semanal */}
+          {!isDemo && routines.length > 0 && (
+            <View style={styles.weekProgress}>
+              <View style={styles.weekBarTrack}>
+                <LinearGradient
+                  colors={gradients.brand}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  style={[styles.weekBarFill, { width: `${Math.min(100, (completedDays / routines.length) * 100)}%` as any }]}
+                />
+              </View>
+              <SystemText dim style={{ fontSize: 12 }}>
+                {completedDays} de {routines.length} días esta semana
+              </SystemText>
+            </View>
+          )}
         </Animated.View>
 
         {/* Rutinas */}
@@ -145,6 +163,10 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.md, paddingTop: spacing.lg, gap: spacing.sm, paddingBottom: 100 },
   header: { gap: 6, marginBottom: spacing.sm },
   title: { fontSize: 38, lineHeight: 40 },
+
+  weekProgress: { gap: 6, marginTop: spacing.sm },
+  weekBarTrack: { height: 6, backgroundColor: colors.bgElevated, borderRadius: 3, overflow: 'hidden' },
+  weekBarFill: { height: '100%', borderRadius: 3 },
 
   routineCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md,

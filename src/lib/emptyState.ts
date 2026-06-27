@@ -19,4 +19,14 @@ export const EMPTY_STATES = {
     title: 'Sin ranking',
     subtitle: 'Completa entrenamientos para aparecer en el ranking',
   },
+  recipes: {
+    icon: '✨',
+    title: 'Sin recetas aún',
+    subtitle: 'Genera tu primera receta con IA según tus macros',
+  },
+  recentFoods: {
+    icon: '🕐',
+    title: 'Sin alimentos recientes',
+    subtitle: 'Los alimentos que registres aparecerán aquí',
+  },
 };
