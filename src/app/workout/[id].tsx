@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import {
   View, ScrollView, StyleSheet, SafeAreaView, Pressable,
-  Alert, TextInput, KeyboardAvoidingView, Platform,
+  Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -81,7 +81,6 @@ export default function WorkoutScreen() {
   const [timerRunning, setTimerRunning] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [setLogs, setSetLogs] = useState<SetLog[]>([]);
-  const [currentSetInputs, setCurrentSetInputs] = useState<{ reps: string; weight: string }[]>([]);
   const sessionId = useRef(`session_${Date.now()}_${Math.random().toString(36).slice(2)}`);
   const startedAt = useRef(new Date());
 
@@ -101,10 +100,6 @@ export default function WorkoutScreen() {
     return () => clearInterval(interval);
   }, [timerRunning]);
 
-  function initSetInputs(ex: ExerciseSession) {
-    setCurrentSetInputs(Array.from({ length: ex.sets }, () => ({ reps: '', weight: '' })));
-  }
-
   function loadDemo() {
     const found = DEMO_ROUTINES.find((r) => r.id === routineId);
     if (!found) { setLoading(false); return; }
@@ -119,7 +114,6 @@ export default function WorkoutScreen() {
       completed: false,
     }));
     setExercises(exs);
-    if (exs.length) initSetInputs(exs[0]);
     setLoading(false);
   }
 
@@ -143,7 +137,6 @@ export default function WorkoutScreen() {
         completed: false,
       })) || [];
       setExercises(mapped);
-      if (mapped.length) initSetInputs(mapped[0]);
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -157,12 +150,12 @@ export default function WorkoutScreen() {
   const totalXP = 100 + exercises.length * 5;
 
   function markCompleteAndNext() {
-    // Save set logs for current exercise
-    const newLogs: SetLog[] = currentSetInputs.map((inp, i) => ({
+    // Marca las series como hechas (sin registro de peso — solo guía)
+    const newLogs: SetLog[] = Array.from({ length: currentEx.sets }, (_, i) => ({
       exercise_id: currentEx.exercise_id,
       set_number: i + 1,
-      reps_done: inp.reps ? parseInt(inp.reps, 10) : (currentEx.reps ?? null),
-      weight_kg: inp.weight ? parseFloat(inp.weight) : null,
+      reps_done: currentEx.reps ?? null,
+      weight_kg: null,
       seconds_done: currentEx.seconds ?? null,
     }));
     setSetLogs((prev) => [...prev, ...newLogs]);
@@ -176,7 +169,6 @@ export default function WorkoutScreen() {
     const nextIdx = currentIdx + 1;
     if (nextIdx < exercises.length) {
       setCurrentIdx(nextIdx);
-      initSetInputs(exercises[nextIdx]);
     }
   }
 
@@ -380,66 +372,29 @@ export default function WorkoutScreen() {
             </View>
           </SystemWindowPanel>
 
-          {/* Registro de series */}
+          {/* Guía de series — solo informativo, marcas como hecho */}
           <Animated.View entering={FadeInRight.delay(0).springify()}>
             <SystemPanel style={styles.setsPanel}>
-              <SystemText style={styles.setsPanelTitle}>Registrar series</SystemText>
-
-              {/* Header */}
-              <View style={styles.setRow}>
-                <SystemText dim style={[styles.setCell, styles.setCellSerie]}>SERIE</SystemText>
-                {currentEx.reps && (
-                  <SystemText dim style={[styles.setCell, styles.setCellInput]}>REPS</SystemText>
-                )}
-                <SystemText dim style={[styles.setCell, styles.setCellInput]}>PESO (kg)</SystemText>
-              </View>
-
-              {currentSetInputs.map((inp, i) => (
+              <SystemText style={styles.setsPanelTitle}>Tu objetivo</SystemText>
+              {Array.from({ length: currentEx.sets }, (_, i) => (
                 <Animated.View
                   key={i}
                   entering={FadeInDown.delay(i * 40).springify()}
-                  style={styles.setRow}
+                  style={styles.guideRow}
                 >
-                  {/* Número de serie */}
-                  <View style={[styles.setCell, styles.setCellSerie]}>
-                    <LinearGradient
-                      colors={gradients.brand as any}
-                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                      style={styles.setBadge}
-                    >
-                      <SystemText style={styles.setBadgeText}>{i + 1}</SystemText>
-                    </LinearGradient>
-                  </View>
-
-                  {/* Reps */}
-                  {currentEx.reps && (
-                    <TextInput
-                      style={[styles.setCell, styles.setCellInput, styles.setInput]}
-                      placeholder={String(currentEx.reps)}
-                      placeholderTextColor={colors.textFaint}
-                      keyboardType="numeric"
-                      value={inp.reps}
-                      onChangeText={(v) => {
-                        const updated = [...currentSetInputs];
-                        updated[i] = { ...updated[i], reps: v };
-                        setCurrentSetInputs(updated);
-                      }}
-                    />
-                  )}
-
-                  {/* Peso */}
-                  <TextInput
-                    style={[styles.setCell, styles.setCellInput, styles.setInput]}
-                    placeholder="—"
-                    placeholderTextColor={colors.textFaint}
-                    keyboardType="decimal-pad"
-                    value={inp.weight}
-                    onChangeText={(v) => {
-                      const updated = [...currentSetInputs];
-                      updated[i] = { ...updated[i], weight: v };
-                      setCurrentSetInputs(updated);
-                    }}
-                  />
+                  <LinearGradient
+                    colors={gradients.brand as any}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={styles.setBadge}
+                  >
+                    <SystemText style={styles.setBadgeText}>{i + 1}</SystemText>
+                  </LinearGradient>
+                  <SystemText style={styles.guideText}>
+                    Serie {i + 1}
+                  </SystemText>
+                  <SystemText style={styles.guideTarget}>
+                    {currentEx.reps ? `${currentEx.reps} reps` : `${currentEx.seconds}s`}
+                  </SystemText>
                 </Animated.View>
               ))}
             </SystemPanel>
@@ -515,22 +470,12 @@ const styles = StyleSheet.create({
 
   setsPanel: { gap: spacing.sm },
   setsPanelTitle: { fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: colors.textFaint, marginBottom: 4 },
-  setRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  setCell: { fontSize: 13, color: colors.text },
-  setCellSerie: { width: 44, alignItems: 'center' },
-  setCellInput: { flex: 1 },
-  setInput: {
-    backgroundColor: colors.bgElevated,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: '700',
-    textAlign: 'center',
-    borderWidth: 1,
-    borderColor: colors.panelBorder,
+  guideRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    paddingVertical: 6,
   },
+  guideText: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.text },
+  guideTarget: { fontSize: 15, fontWeight: '800', color: colors.glow },
   setBadge: {
     width: 32, height: 32, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',

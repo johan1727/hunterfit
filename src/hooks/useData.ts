@@ -74,7 +74,9 @@ export function useDefaultFoods(category?: string) {
     queryFn: async (): Promise<Food[]> => {
       let q = supabase.from('foods').select('*');
       if (category && category !== 'all') q = q.eq('category', category);
-      const { data, error } = await q.order('name_es').limit(50);
+      // Más resultados al filtrar por categoría para que las subcategorías tengan datos
+      const limit = category && category !== 'all' ? 150 : 50;
+      const { data, error } = await q.order('name_es').limit(limit);
       if (error) throw error;
       return data as Food[];
     },

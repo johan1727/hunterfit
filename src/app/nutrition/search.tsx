@@ -70,6 +70,86 @@ function getCategoryEmoji(cat: string): string {
   return CATEGORY_EMOJI[cat.toLowerCase()] ?? '🏷️';
 }
 
+// Subcategorías por categoría (clasificación por palabras clave del nombre).
+// La de keywords vacías [] es el catch-all "Otros".
+type Subcat = { label: string; emoji: string; kw: string[] };
+const SUBCATS: Record<string, Subcat[]> = {
+  'Proteínas': [
+    { label: 'Aves', emoji: '🍗', kw: ['pollo', 'pavo', 'pechuga', 'gallina'] },
+    { label: 'Carnes rojas', emoji: '🥩', kw: ['res', 'cerdo', 'carne', 'bistec', 'molida', 'lomo', 'chuleta', 'ternera', 'cordero', 'arrachera'] },
+    { label: 'Pescados', emoji: '🐟', kw: ['pescado', 'atún', 'salmón', 'camarón', 'marisco', 'tilapia', 'trucha', 'sardina', 'mojarra'] },
+    { label: 'Huevos', emoji: '🥚', kw: ['huevo', 'clara'] },
+    { label: 'Embutidos', emoji: '🌭', kw: ['jamón', 'salchicha', 'tocino', 'chorizo', 'salami'] },
+    { label: 'Otras', emoji: '💪', kw: [] },
+  ],
+  'Cereales': [
+    { label: 'Arroz', emoji: '🍚', kw: ['arroz'] },
+    { label: 'Pastas', emoji: '🍝', kw: ['pasta', 'fideo', 'espagueti', 'macarrón', 'lasaña'] },
+    { label: 'Panes', emoji: '🍞', kw: ['pan', 'tortilla', 'bagel', 'baguette', 'bolillo'] },
+    { label: 'Avena y cereal', emoji: '🥣', kw: ['avena', 'granola', 'cereal', 'muesli', 'hojuela'] },
+    { label: 'Otros', emoji: '🌾', kw: [] },
+  ],
+  'Grasas': [
+    { label: 'Aceites', emoji: '🫒', kw: ['aceite'] },
+    { label: 'Frutos secos', emoji: '🥜', kw: ['almendra', 'nuez', 'cacahuate', 'maní', 'pistache', 'avellana', 'marañón'] },
+    { label: 'Semillas', emoji: '🌰', kw: ['semilla', 'chía', 'linaza', 'girasol', 'calabaza'] },
+    { label: 'Mantequillas', emoji: '🧈', kw: ['mantequilla', 'manteca', 'margarina'] },
+    { label: 'Otras', emoji: '🥑', kw: [] },
+  ],
+  'Verduras': [
+    { label: 'De hoja', emoji: '🥬', kw: ['lechuga', 'espinaca', 'acelga', 'kale', 'arúgula', 'col '] },
+    { label: 'Crucíferas', emoji: '🥦', kw: ['brócoli', 'coliflor', 'repollo'] },
+    { label: 'Raíces', emoji: '🥕', kw: ['zanahoria', 'betabel', 'papa', 'camote', 'rábano', 'nabo'] },
+    { label: 'Otras', emoji: '🍅', kw: [] },
+  ],
+  'Frutas': [
+    { label: 'Cítricos', emoji: '🍊', kw: ['naranja', 'limón', 'mandarina', 'toronja', 'lima'] },
+    { label: 'Tropicales', emoji: '🥭', kw: ['mango', 'piña', 'papaya', 'plátano', 'banana', 'coco', 'guayaba', 'maracuyá'] },
+    { label: 'Bayas', emoji: '🫐', kw: ['fresa', 'mora', 'arándano', 'frambuesa', 'zarzamora'] },
+    { label: 'Otras', emoji: '🍎', kw: [] },
+  ],
+  'Lácteos': [
+    { label: 'Quesos', emoji: '🧀', kw: ['queso'] },
+    { label: 'Yogur', emoji: '🥛', kw: ['yogur', 'yoghurt'] },
+    { label: 'Leches', emoji: '🍼', kw: ['leche'] },
+    { label: 'Otros', emoji: '🧈', kw: [] },
+  ],
+  'Legumbres': [
+    { label: 'Frijoles', emoji: '🫘', kw: ['frijol', 'alubia', 'judía'] },
+    { label: 'Lentejas', emoji: '🍲', kw: ['lenteja'] },
+    { label: 'Garbanzos', emoji: '🧆', kw: ['garbanzo'] },
+    { label: 'Otras', emoji: '🌱', kw: [] },
+  ],
+  'Bebidas': [
+    { label: 'Sin azúcar', emoji: '💧', kw: ['agua', 'té', 'café'] },
+    { label: 'Jugos', emoji: '🧃', kw: ['jugo', 'néctar'] },
+    { label: 'Refrescos', emoji: '🥤', kw: ['refresco', 'soda', 'cola'] },
+    { label: 'Otras', emoji: '☕', kw: [] },
+  ],
+  'Snacks': [
+    { label: 'Dulces', emoji: '🍬', kw: ['chocolate', 'dulce', 'galleta', 'caramelo', 'pastel', 'helado'] },
+    { label: 'Salados', emoji: '🍿', kw: ['papas', 'frituras', 'palomitas', 'chips', 'pretzel'] },
+    { label: 'Barras', emoji: '🍫', kw: ['barra', 'protein'] },
+    { label: 'Otros', emoji: '🍪', kw: [] },
+  ],
+  'Platillos': [
+    { label: 'Mexicanos', emoji: '🌮', kw: ['taco', 'enchilada', 'quesadilla', 'pozole', 'tamal', 'chilaquiles', 'mole', 'sope'] },
+    { label: 'Sopas', emoji: '🍲', kw: ['sopa', 'caldo', 'crema'] },
+    { label: 'Ensaladas', emoji: '🥗', kw: ['ensalada'] },
+    { label: 'Otros', emoji: '🍽️', kw: [] },
+  ],
+};
+
+function classifySubcat(name: string, category: string): string | null {
+  const subs = SUBCATS[category];
+  if (!subs) return null;
+  const n = name.toLowerCase();
+  const match = subs.find(s => s.kw.length > 0 && s.kw.some(k => n.includes(k)));
+  if (match) return match.label;
+  const fallback = subs.find(s => s.kw.length === 0);
+  return fallback?.label ?? null;
+}
+
 const MEAL_TYPES = [
   { key: 'desayuno', label: 'Desayuno', dot: colors.warning },
   { key: 'comida', label: 'Comida', dot: colors.glow },
@@ -89,11 +169,23 @@ export default function SearchFoodScreen() {
   const logDate = params.date ?? localDateString();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedSubcat, setSelectedSubcat] = useState<string | null>(null);
   const { data: searchResults = [] } = useFoodSearch(searchTerm, selectedCategory);
   const { data: defaultFoods = [] } = useDefaultFoods(selectedCategory);
   const { data: dbCategories = [] } = useFoodCategories();
+
+  function selectCategory(cat: string) {
+    setSelectedCategory(cat);
+    setSelectedSubcat(null); // resetear subcategoría al cambiar de categoría
+  }
+
   // Mostrar resultados de búsqueda si hay (≥2 caracteres), si no mostrar alimentos por defecto
-  const foods = searchTerm.length >= 2 ? searchResults : defaultFoods;
+  const baseFoods = searchTerm.length >= 2 ? searchResults : defaultFoods;
+  // Filtro de subcategoría (cuando hay una seleccionada dentro de una categoría)
+  const foods = selectedSubcat
+    ? baseFoods.filter(f => classifySubcat(f.name_es, selectedCategory) === selectedSubcat)
+    : baseFoods;
+  const subcats = selectedCategory !== 'all' ? SUBCATS[selectedCategory] : undefined;
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [quantity, setQuantity] = useState('100');
   const [mealType, setMealType] = useState<MealType>('comida');
@@ -397,7 +489,7 @@ export default function SearchFoodScreen() {
         >
           {/* Pill "Todos" siempre primero */}
           <Pressable
-            onPress={() => setSelectedCategory('all')}
+            onPress={() => selectCategory('all')}
             style={[
               styles.catPill,
               selectedCategory === 'all' && { borderColor: colors.accent, backgroundColor: colors.accent + '22' },
@@ -415,7 +507,7 @@ export default function SearchFoodScreen() {
             return (
               <Pressable
                 key={cat}
-                onPress={() => setSelectedCategory(cat)}
+                onPress={() => selectCategory(cat)}
                 style={[
                   styles.catPill,
                   isActive && { borderColor: colors.accent, backgroundColor: colors.accent + '22' },
@@ -429,6 +521,39 @@ export default function SearchFoodScreen() {
             );
           })}
         </ScrollView>
+
+        {/* Subcategorías de la categoría activa */}
+        {subcats && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 4, gap: 6 }}
+          >
+            <Pressable
+              onPress={() => setSelectedSubcat(null)}
+              style={[styles.subPill, !selectedSubcat && styles.subPillActive]}
+            >
+              <SystemText style={[styles.subPillText, { color: !selectedSubcat ? colors.text : colors.textFaint }]}>
+                Todas
+              </SystemText>
+            </Pressable>
+            {subcats.map(sub => {
+              const isActive = selectedSubcat === sub.label;
+              return (
+                <Pressable
+                  key={sub.label}
+                  onPress={() => setSelectedSubcat(sub.label)}
+                  style={[styles.subPill, isActive && styles.subPillActive]}
+                >
+                  <Text style={{ fontSize: 12 }}>{sub.emoji}</Text>
+                  <SystemText style={[styles.subPillText, { color: isActive ? colors.text : colors.textFaint }]}>
+                    {sub.label}
+                  </SystemText>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
 
         {/* Resultados IA */}
         {aiResults && (
@@ -734,6 +859,14 @@ const styles = StyleSheet.create({
     borderColor: colors.panelBorder, backgroundColor: 'transparent',
   },
   catPillText: { fontSize: 12, fontWeight: '600' },
+
+  subPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: radius.pill, backgroundColor: colors.bgElevated,
+  },
+  subPillActive: { backgroundColor: colors.accent + '2A' },
+  subPillText: { fontSize: 11, fontWeight: '600' },
 
   selectedCard: { gap: spacing.md },
   selectedName: { fontSize: 24, fontWeight: '900' },
