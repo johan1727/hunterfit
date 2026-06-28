@@ -93,6 +93,7 @@ function RootNavigator() {
       <Stack.Screen name="profile/badges" />
       <Stack.Screen name="social/leaderboard" />
       <Stack.Screen name="premium/upgrade" />
+      <Stack.Screen name="premium/family" />
     </Stack>
   );
 }

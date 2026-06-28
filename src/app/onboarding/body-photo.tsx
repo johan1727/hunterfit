@@ -147,25 +147,6 @@ export default function BodyPhotoScreen() {
           </SystemWindowPanel>
         </Animated.View>
 
-        {/* Próximamente: foto de comida */}
-        <Animated.View entering={FadeInDown.delay(160).springify()}>
-          <SystemPanel style={styles.comingSoon}>
-            <View style={styles.comingSoonRow}>
-              <View style={styles.comingSoonBadge}>
-                <Text style={{ fontSize: 10, color: gradients.brand[1], fontWeight: '700', letterSpacing: 1 }}>
-                  PRÓXIMAMENTE
-                </Text>
-              </View>
-            </View>
-            <SystemText style={{ fontSize: 15, fontWeight: '700', marginTop: 8, marginBottom: 4 }}>
-              📸 Contar calorías con foto
-            </SystemText>
-            <SystemText dim style={{ fontSize: 13, lineHeight: 20 }}>
-              Toma una foto de tu comida y la IA estima calorías y macros al instante. Sin buscar ni tipear.
-            </SystemText>
-          </SystemPanel>
-        </Animated.View>
-
         {/* Saltar */}
         <Animated.View entering={FadeInDown.delay(220).springify()}>
           <SystemButton
@@ -206,13 +187,4 @@ const styles = StyleSheet.create({
   figureLegsRow: { flexDirection: 'row', gap: 6, marginTop: 2 },
   figureLeg: { width: 10, height: 20, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.85)' },
   preview: { width: '100%', height: 340, borderRadius: radius.lg, marginBottom: spacing.md },
-
-  comingSoon: {
-    borderStyle: 'dashed',
-  },
-  comingSoonRow: { flexDirection: 'row' },
-  comingSoonBadge: {
-    borderWidth: 1, borderColor: gradients.brand[1] + '60',
-    borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 3,
-  },
 });

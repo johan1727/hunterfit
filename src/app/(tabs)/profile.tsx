@@ -321,6 +321,7 @@ export default function ProfileScreen() {
                 }]),
                 { icon: 'create-outline', label: 'Editar mis datos', onPress: () => router.push('/onboarding/quiz?from=profile') },
                 { icon: 'people-outline', label: 'Cambiar personaje', onPress: () => router.push('/onboarding/character-select') },
+                { icon: 'people-circle-outline', label: 'Plan Familiar', iconColor: colors.glow, onPress: () => router.push('/premium/family' as any) },
               ]}
             />
 

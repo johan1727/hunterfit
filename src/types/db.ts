@@ -14,6 +14,10 @@ export interface Profile {
   last_activity_date: string | null;
   active_character_id: number | null;
   is_premium: boolean;
+  is_family: boolean;
+  plan_id: string | null;
+  plan_expires_at: string | null;
+  plan_source: string | null;
   sex: 'm' | 'f' | 'otro' | null;
   age: number | null;
   height_cm: number | null;
