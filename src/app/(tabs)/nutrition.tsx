@@ -292,6 +292,7 @@ export default function NutritionScreen() {
               items={[
                 { icon: 'calendar-outline', label: 'Plan de comidas', onPress: () => router.push('/nutrition/meal-plan') },
                 { icon: 'cart-outline', label: 'Lista de compras', iconColor: colors.success, onPress: () => router.push('/nutrition/shopping') },
+                { icon: 'timer-outline', label: 'Ayuno Intermitente', iconColor: colors.accent, onPress: () => router.push('/nutrition/fasting') },
                 { icon: 'options-outline', label: 'Ajustar metas de macros', iconColor: colors.warning, onPress: () => router.push('/nutrition/macro-calc') },
                 { icon: 'restaurant-outline', label: 'Recetas fit', iconColor: colors.danger, onPress: () => router.push('/nutrition/recipes' as any) },
               ]}

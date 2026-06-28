@@ -439,3 +439,100 @@ export function useAddBodyMeasurement(userId: string | null) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['body-measurements', userId] }),
   });
 }
+
+// ── Intermittent Fasting ─────────────────────────────────────────────────────
+
+export interface FastingLog {
+  id: string;
+  started_at: string;
+  ended_at: string | null;
+  target_hours: number;
+  completed: boolean;
+}
+
+export function useActiveFasting(userId: string | null) {
+  return useQuery({
+    queryKey: ['active-fasting', userId],
+    enabled: !!userId,
+    refetchInterval: 30_000, // refresh every 30s to keep timer in sync
+    queryFn: async (): Promise<FastingLog | null> => {
+      const { data, error } = await supabase
+        .from('fasting_logs')
+        .select('*')
+        .eq('user_id', userId!)
+        .is('ended_at', null)
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as FastingLog | null;
+    },
+  });
+}
+
+export function useStartFasting(userId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (targetHours: number) => {
+      const { error } = await supabase.from('fasting_logs').insert({
+        user_id: userId!,
+        target_hours: targetHours,
+        started_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['active-fasting', userId] });
+      queryClient.invalidateQueries({ queryKey: ['fasting-streak', userId] });
+    },
+  });
+}
+
+export function useStopFasting(userId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, completed }: { id: string; completed: boolean }) => {
+      const { error } = await supabase
+        .from('fasting_logs')
+        .update({ ended_at: new Date().toISOString(), completed })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['active-fasting', userId] });
+      queryClient.invalidateQueries({ queryKey: ['fasting-streak', userId] });
+    },
+  });
+}
+
+export function useFastingStreak(userId: string | null) {
+  return useQuery({
+    queryKey: ['fasting-streak', userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<number> => {
+      const { data, error } = await supabase
+        .from('fasting_logs')
+        .select('completed, ended_at')
+        .eq('user_id', userId!)
+        .eq('completed', true)
+        .not('ended_at', 'is', null)
+        .order('ended_at', { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      // Count consecutive days with a completed fast
+      const days = new Set(
+        (data ?? []).map((r: any) => (r.ended_at as string).split('T')[0])
+      );
+      const arr = [...days].sort().reverse();
+      let streak = 0;
+      const today = new Date().toISOString().split('T')[0];
+      for (let i = 0; i < arr.length; i++) {
+        const expected = new Date(today);
+        expected.setDate(expected.getDate() - i);
+        if (arr[i] === expected.toISOString().split('T')[0]) streak++;
+        else break;
+      }
+      return streak;
+    },
+  });
+}
