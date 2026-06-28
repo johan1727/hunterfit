@@ -45,3 +45,10 @@ export async function removeFamilyMember(targetUserId: string): Promise<{ succes
   if (error) return { success: false, error: error.message };
   return { success: true };
 }
+
+/** Cancelar el plan Familiar (dueño): disuelve el grupo y revierte a los invitados. */
+export async function cancelFamilyPlan(): Promise<{ success: boolean; error?: string }> {
+  const { error } = await supabase.rpc('cancel_family_plan');
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}

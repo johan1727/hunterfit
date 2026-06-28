@@ -53,7 +53,6 @@ const getGenAIClient = () => {
     console.error('EXPO_PUBLIC_GEMINI_API_KEY no configurada. Verifica .env');
     throw new Error('API key de Gemini no encontrada. Verifica EXPO_PUBLIC_GEMINI_API_KEY en .env');
   }
-  console.log('✅ Gemini API key cargada');
   return new GoogleGenerativeAI(apiKey);
 };
 
@@ -119,10 +118,8 @@ export async function generateRecipeWithGemini(
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const prompt = buildRecipePrompt(request, availableFoods);
 
-    console.log('📝 Enviando prompt a Gemini...');
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
-    console.log('✅ Respuesta recibida de Gemini');
 
     // Extract JSON from response (handle potential markdown code blocks)
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
@@ -154,7 +151,6 @@ export async function generateRecipeWithGemini(
         const fuzzyResults = fuse.search(searchName);
         if (fuzzyResults.length > 0) {
           foodData = fuzzyResults[0].item;
-          console.log(`✨ Fuzzy match encontrado: "${searchName}" -> "${foodData.name_es}"`);
         }
       }
 
@@ -235,7 +231,6 @@ export async function generateMultipleRecipes(
 ): Promise<GeneratedRecipe[]> {
   // Generar en PARALELO — Gemini Flash maneja varias llamadas concurrentes sin problema.
   // Esto reduce el tiempo total de ~3x a ~1x (la receta más lenta).
-  console.log(`⚡ Generando ${count} recetas en paralelo...`);
   const results = await Promise.allSettled(
     Array.from({ length: count }, () => generateRecipeWithGemini(request, availableFoods))
   );

@@ -35,13 +35,27 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
+  const [needsConfirm, setNeedsConfirm] = useState(false);
+  const [resending, setResending] = useState(false);
 
   async function handleLogin() {
     setError('');
+    setNeedsConfirm(false);
     setLoading(true);
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (err) setError(err.message);
+    if (err) {
+      setError(err.message);
+      if (/confirm/i.test(err.message)) setNeedsConfirm(true);
+    }
+  }
+
+  async function handleResendConfirm() {
+    if (!email) return;
+    setResending(true);
+    const { error: err } = await supabase.auth.resend({ type: 'signup', email });
+    setResending(false);
+    setError(err ? err.message : 'Correo de confirmación reenviado. Revisa tu bandeja.');
   }
 
   async function handleGoogleLogin() {
@@ -143,6 +157,16 @@ export default function LoginScreen() {
               {error}
             </SystemText>
           ) : null}
+
+          {needsConfirm && (
+            <SystemButton
+              title={resending ? 'Reenviando…' : 'Reenviar correo de confirmación'}
+              variant="ghost"
+              loading={resending}
+              onPress={handleResendConfirm}
+              style={{ marginTop: spacing.sm }}
+            />
+          )}
 
           <SystemButton
             title="Entrar"

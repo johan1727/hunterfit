@@ -18,6 +18,8 @@ export default function SignupScreen() {
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
 
   async function handleSignup() {
     setMsg(null);
@@ -29,8 +31,19 @@ export default function SignupScreen() {
     if (error) {
       setMsg({ text: error.message, ok: false });
     } else {
-      setMsg({ text: 'Revisa tu correo para confirmar la cuenta', ok: true });
+      setPendingEmail(email);
+      setMsg({ text: `Te enviamos un correo a ${email}. Ábrelo para confirmar tu cuenta.`, ok: true });
     }
+  }
+
+  async function handleResend() {
+    if (!pendingEmail) return;
+    setResending(true);
+    const { error } = await supabase.auth.resend({ type: 'signup', email: pendingEmail });
+    setResending(false);
+    setMsg(error
+      ? { text: error.message, ok: false }
+      : { text: 'Correo reenviado. Revisa tu bandeja (y spam).', ok: true });
   }
 
   const handleEmailChange = (text: string) => {
@@ -96,13 +109,23 @@ export default function SignupScreen() {
             </SystemText>
           ) : null}
 
-          <SystemButton
-            title="Crear cuenta"
-            variant="gradient"
-            loading={loading}
-            onPress={handleSignup}
-            style={{ marginTop: spacing.lg }}
-          />
+          {pendingEmail ? (
+            <SystemButton
+              title={resending ? 'Reenviando…' : 'Reenviar correo de confirmación'}
+              variant="ghost"
+              loading={resending}
+              onPress={handleResend}
+              style={{ marginTop: spacing.lg }}
+            />
+          ) : (
+            <SystemButton
+              title="Crear cuenta"
+              variant="gradient"
+              loading={loading}
+              onPress={handleSignup}
+              style={{ marginTop: spacing.lg }}
+            />
+          )}
 
           <SystemButton
             title="Ya tengo cuenta"

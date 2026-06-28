@@ -6,7 +6,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useProfile } from '../../hooks/useData';
 import {
   createFamilyInvite, redeemFamilyInvite, getFamilyMembers,
-  leaveFamily, removeFamilyMember, type FamilyMember,
+  leaveFamily, removeFamilyMember, cancelFamilyPlan, type FamilyMember,
 } from '../../services/family';
 import { characterImage, CHARS_WITH_ART } from '../../constants/game';
 import {
@@ -40,6 +40,21 @@ export default function FamilyScreen() {
           const { success, error } = await leaveFamily();
           if (!success) { Alert.alert('Error', error ?? 'No se pudo salir'); return; }
           Alert.alert('Listo', 'Saliste del grupo Familiar.', [
+            { text: 'OK', onPress: () => router.replace('/(tabs)/home') },
+          ]);
+        },
+      },
+    ]);
+  }
+
+  function handleCancelPlan() {
+    Alert.alert('Cancelar plan Familiar', '¿Disolver el grupo? Los miembros invitados perderán su Premium.', [
+      { text: 'Volver', style: 'cancel' },
+      {
+        text: 'Disolver grupo', style: 'destructive', onPress: async () => {
+          const { success, error } = await cancelFamilyPlan();
+          if (!success) { Alert.alert('Error', error ?? 'No se pudo cancelar'); return; }
+          Alert.alert('Listo', 'El grupo Familiar fue disuelto.', [
             { text: 'OK', onPress: () => router.replace('/(tabs)/home') },
           ]);
         },
@@ -164,6 +179,14 @@ export default function FamilyScreen() {
           <Pressable onPress={handleLeave} style={styles.leaveBtn}>
             <Ionicons name="exit-outline" size={16} color={colors.danger} />
             <SystemText style={{ color: colors.danger, fontSize: 13, fontWeight: '700' }}>Salir del grupo Familiar</SystemText>
+          </Pressable>
+        )}
+
+        {/* Dueño: cancelar / disolver el plan */}
+        {isFamilyOwner && (
+          <Pressable onPress={handleCancelPlan} style={styles.leaveBtn}>
+            <Ionicons name="trash-outline" size={16} color={colors.danger} />
+            <SystemText style={{ color: colors.danger, fontSize: 13, fontWeight: '700' }}>Cancelar plan Familiar</SystemText>
           </Pressable>
         )}
 

@@ -20,13 +20,20 @@ export async function grantEntitlement(
 ): Promise<PurchaseResult> {
   try {
     const isFamily = planId.startsWith('family_');
+    // Mock: la expiración se estima localmente. Con RevenueCat real, derivarla de
+    // customerInfo.entitlements.active[..].expirationDate.
+    const expires = new Date();
+    if (planId.endsWith('_annual')) expires.setFullYear(expires.getFullYear() + 1);
+    else expires.setMonth(expires.getMonth() + 1);
+    const expiresAt = expires.toISOString();
+
     const { error } = await supabase
       .from('profiles')
-      .update({ is_premium: true, is_family: isFamily, plan_id: planId, plan_source: source })
+      .update({ is_premium: true, is_family: isFamily, plan_id: planId, plan_source: source, plan_expires_at: expiresAt })
       .eq('id', userId);
     if (error) throw error;
     // Historial (no bloquea la compra si falla)
-    await supabase.from('subscriptions').insert({ user_id: userId, plan_id: planId, source, status: 'active' });
+    await supabase.from('subscriptions').insert({ user_id: userId, plan_id: planId, source, status: 'active', expires_at: expiresAt });
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message ?? 'Error al procesar el pago' };
