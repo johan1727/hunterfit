@@ -11,54 +11,43 @@ import { purchasePlan, restorePurchases, type PlanId } from '../../services/purc
 import {
   AuroraBackground, GradientText, SystemWindowPanel, SystemText,
 } from '../../components/system';
+import { SegmentedTabs } from '../../components/SegmentedTabs';
 import { colors, gradients, numeric, radius, spacing } from '../../theme/system';
 
-const PLANS = [
-  {
-    id: 'monthly',
-    label: 'Mensual',
-    price: '$79',
-    period: '/mes',
-    pricePerDay: '$2.63',
-    highlight: false,
-    badge: null,
-  },
-  {
-    id: 'annual',
-    label: 'Anual',
-    price: '$499',
-    period: '/año',
-    pricePerDay: '$1.37',
-    highlight: true,
-    badge: 'MÁS POPULAR',
-    saving: 'Ahorra 47%',
-  },
-  {
-    id: 'lifetime',
-    label: 'De por vida',
-    price: '$1,299',
-    period: 'pago único',
-    pricePerDay: null,
-    highlight: false,
-    badge: 'MEJOR VALOR',
-  },
+type Plan = {
+  id: PlanId; label: string; price: string; period: string;
+  sub: string | null; badge: string | null; saving?: string;
+};
+
+const PERIODS = [
+  { key: 'monthly' as const, label: 'Mensual' },
+  { key: 'annual' as const, label: 'Anual' },
 ];
 
-// Comparativa Gratis vs Pro. `free` = incluido en el plan gratis (Pro incluye todo).
+// Planes estilo Fitia: Normal (individual) y Familiar (hasta 6), por periodo.
+const PLAN_MATRIX: Record<'monthly' | 'annual', Plan[]> = {
+  monthly: [
+    { id: 'normal_monthly', label: 'Normal', price: '$79', period: '/mes', sub: 'Para ti', badge: null },
+    { id: 'family_monthly', label: 'Familiar', price: '$129', period: '/mes', sub: 'Hasta 6 personas', badge: 'FAMILIAR' },
+  ],
+  annual: [
+    { id: 'normal_annual', label: 'Normal', price: '$499', period: '/año', sub: '$1.37/día', badge: 'AHORRA 47%' },
+    { id: 'family_annual', label: 'Familiar', price: '$799', period: '/año', sub: 'Hasta 6 · $2.19/día', badge: 'MÁS POPULAR', saving: 'Ahorra 48%' },
+  ],
+};
+
+// Comparativa Gratis vs Pro. Solo features que la app realmente entrega.
+// `free` = incluido en el plan gratis (Pro/Familiar incluyen todo).
 const COMPARISON = [
-  { label: 'Rutinas con 1 personaje', free: true },
+  { label: 'Rutinas personalizadas', free: true },
   { label: 'Registro de alimentos (DB completa)', free: true },
   { label: 'Misiones diarias y semanales', free: true },
   { label: 'Leaderboard global', free: true },
   { label: 'Podómetro y pasos diarios', free: true },
-  { label: 'Análisis de foto con IA (ilimitado)', free: false },
-  { label: 'Plan de comidas semanal con IA', free: false },
-  { label: 'Todos los personajes + sus 3 formas', free: false },
-  { label: 'Badges y rangos exclusivos', free: false },
-  { label: 'Sin anuncios', free: false },
-  { label: 'Historial ilimitado de entrenamientos', free: false },
-  { label: 'Exportar datos a Excel/PDF', free: false },
-  { label: 'Soporte prioritario 24/7', free: false },
+  { label: 'Análisis de foto con IA', free: false },
+  { label: 'Generador de recetas con IA', free: false },
+  { label: 'Análisis de composición corporal', free: false },
+  { label: 'Plan Familiar (hasta 6 personas)', free: false },
 ];
 
 export default function UpgradeScreen() {
@@ -66,8 +55,18 @@ export default function UpgradeScreen() {
   const { profile } = useHunterData();
   const { userId } = useAuth();
   const [purchasing, setPurchasing] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState('annual');
+  const [period, setPeriod] = useState<'monthly' | 'annual'>('annual');
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>('family_annual');
+  const plans = PLAN_MATRIX[period];
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // Al cambiar de periodo, asegurar que el plan seleccionado pertenezca a ese periodo
+  function changePeriod(p: 'monthly' | 'annual') {
+    setPeriod(p);
+    setSelectedPlan(PLAN_MATRIX[p].some((pl) => pl.id === selectedPlan)
+      ? selectedPlan
+      : PLAN_MATRIX[p][PLAN_MATRIX[p].length - 1].id);
+  }
 
   // Pulse animation para el CTA
   useEffect(() => {
@@ -79,7 +78,7 @@ export default function UpgradeScreen() {
     ).start();
   }, []);
 
-  const selected = PLANS.find((p) => p.id === selectedPlan)!;
+  const selected = plans.find((p) => p.id === selectedPlan) ?? plans[0];
 
   async function handlePurchase() {
     if (!userId || purchasing) return;
@@ -145,9 +144,16 @@ export default function UpgradeScreen() {
           </SystemText>
         </View>
 
+        {/* Periodo */}
+        <SegmentedTabs
+          value={period}
+          onChange={changePeriod}
+          options={PERIODS.map((p) => ({ key: p.key, label: p.label }))}
+        />
+
         {/* Plan selector */}
         <View style={{ gap: spacing.sm }}>
-          {PLANS.map((plan) => (
+          {plans.map((plan) => (
             <Pressable key={plan.id} onPress={() => setSelectedPlan(plan.id)}>
               {selectedPlan === plan.id ? (
                 <LinearGradient colors={gradients.brand as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
@@ -178,12 +184,12 @@ export default function UpgradeScreen() {
           <Pressable onPress={handlePurchase} disabled={purchasing}>
             <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
               style={styles.ctaBtn}>
-              <SystemText style={[{ fontSize: 17, fontWeight: '900', color: '#000' }, numeric]}>
+              <SystemText style={[{ fontSize: 17, fontWeight: '900', color: '#fff' }, numeric]}>
                 {purchasing ? 'Procesando…' : `Obtener Hunter Pro — ${selected.price}${selected.period}`}
               </SystemText>
-              {selected.id === 'annual' && (
+              {period === 'annual' && (
                 <SystemText style={{ fontSize: 12, color: '#fff', opacity: 0.85 }}>
-                  Solo {selected.pricePerDay} por día · Cancela cuando quieras
+                  {selected.sub} · Cancela cuando quieras
                 </SystemText>
               )}
             </LinearGradient>
@@ -233,7 +239,7 @@ export default function UpgradeScreen() {
   );
 }
 
-function PlanContent({ plan, selected }: { plan: typeof PLANS[0]; selected: boolean }) {
+function PlanContent({ plan, selected }: { plan: Plan; selected: boolean }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
       <View style={[styles.radio, selected && styles.radioSelected]}>
@@ -243,9 +249,9 @@ function PlanContent({ plan, selected }: { plan: typeof PLANS[0]; selected: bool
         <SystemText style={{ fontWeight: '800', fontSize: 15, color: selected ? '#fff' : colors.text }}>
           {plan.label}
         </SystemText>
-        {plan.pricePerDay && (
+        {plan.sub && (
           <SystemText style={{ fontSize: 12, color: selected ? '#ffffff90' : colors.textDim }}>
-            {plan.pricePerDay}/día
+            {plan.sub}
           </SystemText>
         )}
       </View>
@@ -292,7 +298,7 @@ const styles = StyleSheet.create({
   },
   planCardSelected: { borderColor: 'transparent' },
   planBadge: {
-    position: 'absolute', top: -10, right: spacing.md,
+    position: 'absolute', top: -10, left: spacing.md,
     backgroundColor: '#FFD70020', borderRadius: radius.pill,
     paddingHorizontal: 10, paddingVertical: 3,
     borderWidth: 1, borderColor: '#FFD70040',

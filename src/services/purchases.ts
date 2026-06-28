@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 
-export type PlanId = 'monthly' | 'annual' | 'lifetime';
+export type PlanId = 'normal_monthly' | 'normal_annual' | 'family_monthly' | 'family_annual';
 
 export interface PurchaseResult {
   success: boolean;

@@ -78,9 +78,9 @@ export default function HomeScreen() {
               style={styles.demoBanner}
             >
               <SystemText style={{ fontSize: 13, color: colors.glow }}>
-                Modo exploración · datos de ejemplo
+                Modo exploración · tu progreso no se guarda
               </SystemText>
-              <Text style={styles.demoExit} onPress={exitDemo}>Salir →</Text>
+              <Text style={styles.demoExit} onPress={exitDemo}>Crear cuenta →</Text>
             </LinearGradient>
           </Animated.View>
         )}

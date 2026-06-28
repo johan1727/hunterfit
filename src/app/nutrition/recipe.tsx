@@ -12,6 +12,7 @@ import Animated, {
   useAnimatedStyle, useSharedValue, interpolate, Easing,
 } from 'react-native-reanimated';
 import { useAuth } from '../../hooks/useAuth';
+import { useProfile } from '../../hooks/useData';
 import { useRecipeAI } from '../../hooks/useRecipeAI';
 import { useFavoriteRecipes } from '../../lib/favoriteRecipesStore';
 import { usePreferencesStore } from '../../lib/preferencesStore';
@@ -439,6 +440,7 @@ function RecipeCarouselDots({ count, active }: { count: number; active: number }
 export default function RecipeScreen() {
   const router = useRouter();
   const { userId } = useAuth();
+  const { data: profile } = useProfile(userId);
   const [mealType, setMealType] = useState<MealType>('lunch');
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [showSteps, setShowSteps] = useState(false);
@@ -473,6 +475,7 @@ export default function RecipeScreen() {
 
   const handleGenerate = () => {
     if (!userId) { Alert.alert('Error', 'Debes estar autenticado'); return; }
+    if (!profile?.is_premium) { router.push('/premium/upgrade'); return; }
     setDisplayRecipes(null);
     generateMultiple(3, {
       onSuccess: (generated) => {

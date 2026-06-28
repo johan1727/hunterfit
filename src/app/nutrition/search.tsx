@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, FlatList, Alert, Text, TextInput, ActivityIndicator } from 'react-native';
+import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, FlatList, Alert, Text, TextInput, ActivityIndicator, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../hooks/useAuth';
@@ -212,6 +213,61 @@ export default function SearchFoodScreen() {
   const addFavorite = useAddFavorite(isDemo ? null : userId);
   const removeFavorite = useRemoveFavorite(isDemo ? null : userId);
   const [showFavorites, setShowFavorites] = useState(false);
+
+  // Voice recording state
+  const [showVoice, setShowVoice] = useState(false);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [voiceLoading, setVoiceLoading] = useState(false);
+
+  async function startRecording() {
+    try {
+      const { granted } = await Audio.requestPermissionsAsync();
+      if (!granted) {
+        Alert.alert('Permisos', 'Se necesita acceso al micrófono para usar esta función');
+        return;
+      }
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+      const { recording: rec } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setRecording(rec);
+    } catch (err) {
+      Alert.alert('Error', 'No se pudo iniciar la grabación');
+    }
+  }
+
+  async function stopRecordingAndAnalyze() {
+    if (!recording) return;
+    setVoiceLoading(true);
+    try {
+      await recording.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+      const uri = recording.getURI();
+      setRecording(null);
+      if (!uri) throw new Error('No se obtuvo el audio');
+
+      // Read as base64
+      const { File } = await import('expo-file-system');
+      const file = new File(uri);
+      const base64 = await file.readAsText('base64');
+
+      const { data, error } = await supabase.functions.invoke('voice-food', {
+        body: { audio_base64: base64, mime_type: 'audio/m4a' },
+      });
+      if (error) throw error;
+      const result = data as { alimento: string; cantidad_g: number; confianza: string };
+      if (!result.alimento) {
+        Alert.alert('No entendí', 'No reconocí un alimento. Intenta de nuevo o escribe el nombre.');
+        return;
+      }
+      setShowVoice(false);
+      setSearchTerm(result.alimento);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message ?? 'No se pudo procesar el audio');
+    } finally {
+      setVoiceLoading(false);
+    }
+  }
 
 
   async function handleAddMeal() {
