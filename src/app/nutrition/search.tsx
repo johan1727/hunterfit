@@ -899,7 +899,7 @@ export default function SearchFoodScreen() {
                 />
               </Pressable>
               <SystemButton
-                label="Cancelar"
+                title="Cancelar"
                 variant="ghost"
                 style={{ marginTop: 16 }}
                 onPress={async () => {
