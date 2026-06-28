@@ -148,7 +148,7 @@ export default function WorkoutsScreen() {
         {routines.length > 0 && !isDemo && (
           <>
             <SystemButton
-              title="🏆 Historial y récords personales"
+              title="Historial y récords personales"
               variant="ghost"
               onPress={() => router.push('/workout/history' as any)}
             />

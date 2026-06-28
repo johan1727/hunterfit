@@ -124,7 +124,7 @@ export default function HomeScreen() {
           />
           <QuickAction
             icon="barbell"
-            label={nextRoutine ? `Día 1\n${nextRoutine.name}` : 'Ver\nrutinas'}
+            label={nextRoutine ? `Entrenar\n${nextRoutine.name}` : 'Ver\nrutinas'}
             onPress={() => pressHaptic(() =>
               nextRoutine
                 ? router.push(`/workout/${nextRoutine.id}`)

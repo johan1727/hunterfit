@@ -1,7 +1,8 @@
 import { Tabs } from 'expo-router';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, gradients, radius, spacing } from '../../theme/system';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -45,9 +46,13 @@ function TabIcon({ icon, iconActive, focused }: { icon: IconName; iconActive: Ic
 }
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+  // Barra flotante: sobre el home indicator en iPhones con notch, con un margen
+  // mínimo en dispositivos sin inset inferior.
+  const bottom = Math.max(insets.bottom, 16);
   return (
     <Tabs
-      screenOptions={{ headerShown: false, tabBarStyle: styles.tabBar, tabBarLabelStyle: styles.tabLabel }}
+      screenOptions={{ headerShown: false, tabBarStyle: [styles.tabBar, { bottom }], tabBarLabelStyle: styles.tabLabel }}
     >
       {TABS.map(({ name, label, icon, iconActive }) => (
         <Tabs.Screen
@@ -71,7 +76,6 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 28 : 18,
     left: 20,
     right: 20,
     borderRadius: radius.pill,

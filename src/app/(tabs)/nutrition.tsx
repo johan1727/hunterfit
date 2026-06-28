@@ -285,7 +285,7 @@ export default function NutritionScreen() {
             <SystemButton
               title="Generar receta con IA"
               onPress={() => router.push('/nutrition/recipe')}
-              variant="gradient"
+              variant="ghost"
             />
             <MenuList
               title="Herramientas"

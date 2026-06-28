@@ -187,9 +187,9 @@ export default function UpgradeScreen() {
               <SystemText style={[{ fontSize: 17, fontWeight: '900', color: '#fff' }, numeric]}>
                 {purchasing ? 'Procesando…' : `Obtener Hunter Pro — ${selected.price}${selected.period}`}
               </SystemText>
-              {period === 'annual' && (
+              {selected.sub && (
                 <SystemText style={{ fontSize: 12, color: '#fff', opacity: 0.85 }}>
-                  {selected.sub} · Cancela cuando quieras
+                  {selected.sub}
                 </SystemText>
               )}
             </LinearGradient>
@@ -197,7 +197,7 @@ export default function UpgradeScreen() {
         </Animated.View>
 
         <SystemText dim style={{ fontSize: 11, textAlign: 'center' }}>
-          Pago seguro · Sin cargos ocultos · Prueba 7 días gratis
+          Pago seguro · Sin cargos ocultos · Cancela cuando quieras
         </SystemText>
 
         {/* Comparativa */}

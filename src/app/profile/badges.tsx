@@ -35,13 +35,13 @@ const RARITY_LABEL = {
   common: 'Común',
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  all: '🏅 Todos',
-  workout: '💪 Entreno',
-  nutrition: '🥗 Nutrición',
-  streak: '🔥 Rachas',
-  level: '⚡ Nivel',
-  social: '🏆 Social',
+const CATEGORY_META: Record<string, { label: string; icon: React.ComponentProps<typeof Ionicons>['name'] }> = {
+  all:       { label: 'Todos',     icon: 'ribbon-outline' },
+  workout:   { label: 'Entreno',   icon: 'barbell-outline' },
+  nutrition: { label: 'Nutrición', icon: 'nutrition-outline' },
+  streak:    { label: 'Rachas',    icon: 'flame-outline' },
+  level:     { label: 'Nivel',     icon: 'flash-outline' },
+  social:    { label: 'Social',    icon: 'trophy-outline' },
 };
 
 export default function BadgesScreen() {
@@ -123,20 +123,25 @@ export default function BadgesScreen() {
         {/* Category filter */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
-            {Object.entries(CATEGORY_LABELS).map(([cat, label]) => (
-              <Pressable key={cat} onPress={() => setCategory(cat)}>
-                {category === cat ? (
-                  <LinearGradient colors={gradients.brand as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                    style={styles.catChipGrad}>
-                    <SystemText style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>{label}</SystemText>
-                  </LinearGradient>
-                ) : (
-                  <View style={styles.catChip}>
-                    <SystemText dim style={{ fontSize: 13 }}>{label}</SystemText>
-                  </View>
-                )}
-              </Pressable>
-            ))}
+            {Object.entries(CATEGORY_META).map(([cat, meta]) => {
+              const active = category === cat;
+              return (
+                <Pressable key={cat} onPress={() => setCategory(cat)}>
+                  {active ? (
+                    <LinearGradient colors={gradients.brand as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                      style={[styles.catChipGrad, styles.catChipRow]}>
+                      <Ionicons name={meta.icon} size={13} color="#fff" />
+                      <SystemText style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>{meta.label}</SystemText>
+                    </LinearGradient>
+                  ) : (
+                    <View style={[styles.catChip, styles.catChipRow]}>
+                      <Ionicons name={meta.icon} size={13} color={colors.textDim} />
+                      <SystemText dim style={{ fontSize: 13 }}>{meta.label}</SystemText>
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
           </View>
         </ScrollView>
 
@@ -232,6 +237,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill, borderWidth: 1, borderColor: colors.panelBorder,
   },
   catChipGrad: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill },
+  catChipRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   badgeCard: {
     width: '47%', borderRadius: radius.lg, borderWidth: 1,

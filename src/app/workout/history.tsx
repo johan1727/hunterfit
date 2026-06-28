@@ -148,7 +148,7 @@ export default function WorkoutHistoryScreen() {
               onPress={() => setTab(t)}
             >
               <SystemText style={[styles.tabText, tab === t && styles.tabTextActive]}>
-                {t === 'history' ? '📋 Sesiones' : '🏆 Récords'}
+                {t === 'history' ? 'Sesiones' : 'Récords'}
               </SystemText>
             </Pressable>
           ))}

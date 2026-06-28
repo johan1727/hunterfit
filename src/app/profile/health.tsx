@@ -216,13 +216,13 @@ export default function HealthScreen() {
 
         {/* Stats row */}
         <View style={styles.statsRow}>
-          {[
-            { icon: '🔥', label: 'Calorías', value: `${kcalBurned} kcal` },
-            { icon: '📍', label: 'Distancia', value: `${distanceKm} km` },
-            { icon: '⚡', label: 'XP ganado', value: `+${xpEarned} XP` },
-          ].map((s) => (
+          {([
+            { icon: 'flame', color: colors.warning, label: 'Calorías', value: `${kcalBurned} kcal` },
+            { icon: 'location', color: colors.glow, label: 'Distancia', value: `${distanceKm} km` },
+            { icon: 'flash', color: colors.accent, label: 'XP ganado', value: `+${xpEarned} XP` },
+          ] as const).map((s) => (
             <SystemPanel key={s.label} style={styles.statCard}>
-              <SystemText style={{ fontSize: 22 }}>{s.icon}</SystemText>
+              <Ionicons name={s.icon} size={22} color={s.color} />
               <SystemText style={{ fontSize: 15, fontWeight: '800', color: colors.text }}>
                 {s.value}
               </SystemText>
@@ -233,7 +233,10 @@ export default function HealthScreen() {
 
         {/* Info sobre XP */}
         <SystemPanel style={{ gap: 4 }}>
-          <SystemText style={{ fontWeight: '700', fontSize: 14 }}>⚡ XP por pasos</SystemText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="flash" size={15} color={colors.accent} />
+            <SystemText style={{ fontWeight: '700', fontSize: 14 }}>XP por pasos</SystemText>
+          </View>
           <SystemText dim style={{ fontSize: 13, lineHeight: 20 }}>
             Gana +5 XP por cada 1,000 pasos. Los pasos se sincronizan automáticamente en tiempo real usando el sensor del dispositivo.
           </SystemText>

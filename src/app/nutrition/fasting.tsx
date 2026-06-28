@@ -199,7 +199,8 @@ export default function FastingScreen() {
             </Pressable>
             <View style={{ flex: 1 }} />
             <View style={styles.streakBadge}>
-              <Text style={styles.streakText}>🔥 Racha: {streak} días</Text>
+              <Ionicons name="flame" size={14} color={colors.warning} />
+              <Text style={styles.streakText}>Racha: {streak} días</Text>
             </View>
           </View>
           <GradientText style={styles.title}>Control de Ayuno</GradientText>
@@ -354,6 +355,9 @@ const styles = StyleSheet.create({
     borderColor: colors.panelBorder,
   },
   streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     backgroundColor: colors.bgElevated,
     paddingHorizontal: spacing.md,
     paddingVertical: 6,

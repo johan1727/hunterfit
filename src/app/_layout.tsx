@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useData';
 import { initRevenueCat } from '../lib/revenuecat';
@@ -19,12 +20,14 @@ const queryClient = new QueryClient({
 
 export default function RootLayout() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <StatusBar style="light" />
-      <RootNavigator />
-      <LevelUpOverlay />
-      <BadgeToast />
-    </QueryClientProvider>
+    <SafeAreaProvider>
+      <QueryClientProvider client={queryClient}>
+        <StatusBar style="light" />
+        <RootNavigator />
+        <LevelUpOverlay />
+        <BadgeToast />
+      </QueryClientProvider>
+    </SafeAreaProvider>
   );
 }
 
