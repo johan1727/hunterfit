@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { RC_ENABLED, purchaseViaRevenueCat, restoreViaRevenueCat } from '../lib/revenuecat';
 
 export type PlanId = 'normal_monthly' | 'normal_annual' | 'family_monthly' | 'family_annual';
 
@@ -32,17 +33,32 @@ export async function grantEntitlement(
   }
 }
 
-/** Mock de RevenueCat — reemplazar el cobro real con el SDK antes de producción. */
+/**
+ * Compra un plan. En device (iOS/Android) usa RevenueCat real; en web usa mock.
+ * El éxito aterriza SIEMPRE en grantEntitlement (sincroniza Supabase).
+ */
 export async function purchasePlan(planId: PlanId, userId: string): Promise<PurchaseResult> {
-  // Simular latencia de red/store
-  await new Promise((r) => setTimeout(r, 1500));
-  // En producción: await Purchases.purchasePackage(pkg) y luego grantEntitlement(..., 'revenuecat')
+  if (RC_ENABLED) {
+    const r = await purchaseViaRevenueCat(planId);
+    if (!r.ok) return { success: false, error: r.cancelled ? 'Compra cancelada' : (r.error ?? 'No se pudo completar la compra') };
+    return grantEntitlement(planId, userId, 'revenuecat');
+  }
+  // Web/Expo Go: mock (sin cobro)
+  await new Promise((r) => setTimeout(r, 1200));
   return grantEntitlement(planId, userId, 'mock');
 }
 
 export async function restorePurchases(userId: string): Promise<PurchaseResult> {
-  await new Promise((r) => setTimeout(r, 1000));
-  // Mock: en producción llamar Purchases.restorePurchases()
+  if (RC_ENABLED) {
+    const r = await restoreViaRevenueCat();
+    if (!r.ok) return { success: false, error: r.error ?? 'No se encontró ninguna compra anterior' };
+    // Hay entitlement activo en la tienda → reflejarlo en Supabase
+    const { error } = await supabase.from('profiles').update({ is_premium: true, plan_source: 'revenuecat' }).eq('id', userId);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  }
+  // Web/Expo Go: mock — revisar si ya es premium en Supabase
+  await new Promise((r) => setTimeout(r, 800));
   const { data, error } = await supabase
     .from('profiles')
     .select('is_premium')

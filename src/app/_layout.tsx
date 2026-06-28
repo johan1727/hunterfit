@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useData';
+import { initRevenueCat } from '../lib/revenuecat';
 import { useDemoStore } from '../lib/demoStore';
 import { useLevelUpStore } from '../lib/levelUpStore';
 import { LevelUpModal } from '../components/LevelUpModal';
@@ -49,6 +50,11 @@ function RootNavigator() {
 
   const isLoggedIn = !!session;
   const onboardingComplete = profile?.onboarding_complete ?? false;
+
+  // Inicializar RevenueCat (no-op en web) cuando hay sesión
+  useEffect(() => {
+    if (session?.user?.id) initRevenueCat(session.user.id);
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (isDemo || (!authLoading && !profileLoading)) {
