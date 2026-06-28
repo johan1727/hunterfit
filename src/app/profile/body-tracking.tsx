@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, ScrollView, StyleSheet, SafeAreaView, Pressable, TextInput, Alert,
+  View, ScrollView, StyleSheet, SafeAreaView, Pressable, Alert,
   Text,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -11,7 +11,7 @@ import { useHunterData } from '../../hooks/useHunterData';
 import { useBodyMeasurements, useAddBodyMeasurement, useWeightHistory } from '../../hooks/useData';
 import { useDemoStore } from '../../lib/demoStore';
 import {
-  AuroraBackground, GradientText, SystemPanel, SystemText, SystemButton,
+  AuroraBackground, GradientText, SystemPanel, SystemText, SystemButton, SystemInput,
 } from '../../components/system';
 import { colors, gradients, radius, spacing } from '../../theme/system';
 
@@ -117,18 +117,14 @@ export default function BodyTrackingScreen() {
 
             {/* Row 1: Weight, Waist */}
             <View style={styles.row}>
-              <TextInput
-                style={styles.input}
+              <SystemInput
                 placeholder="Peso (kg)"
-                placeholderTextColor={colors.textFaint}
                 keyboardType="decimal-pad"
                 value={weight}
                 onChangeText={setWeight}
               />
-              <TextInput
-                style={styles.input}
+              <SystemInput
                 placeholder="Cintura (cm)"
-                placeholderTextColor={colors.textFaint}
                 keyboardType="decimal-pad"
                 value={waist}
                 onChangeText={setWaist}
@@ -137,18 +133,14 @@ export default function BodyTrackingScreen() {
 
             {/* Row 2: Hips, Chest */}
             <View style={styles.row}>
-              <TextInput
-                style={styles.input}
+              <SystemInput
                 placeholder="Cadera (cm)"
-                placeholderTextColor={colors.textFaint}
                 keyboardType="decimal-pad"
                 value={hips}
                 onChangeText={setHips}
               />
-              <TextInput
-                style={styles.input}
+              <SystemInput
                 placeholder="Pecho (cm)"
-                placeholderTextColor={colors.textFaint}
                 keyboardType="decimal-pad"
                 value={chest}
                 onChangeText={setChest}
@@ -157,18 +149,14 @@ export default function BodyTrackingScreen() {
 
             {/* Row 3: Arm, Body Fat */}
             <View style={styles.row}>
-              <TextInput
-                style={styles.input}
+              <SystemInput
                 placeholder="Brazo (cm)"
-                placeholderTextColor={colors.textFaint}
                 keyboardType="decimal-pad"
                 value={arm}
                 onChangeText={setArm}
               />
-              <TextInput
-                style={styles.input}
+              <SystemInput
                 placeholder="Grasa corporal (%)"
-                placeholderTextColor={colors.textFaint}
                 keyboardType="decimal-pad"
                 value={bodyFat}
                 onChangeText={setBodyFat}
@@ -357,17 +345,6 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: spacing.sm,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: colors.bgElevated,
-    borderWidth: 1,
-    borderColor: colors.panelBorder,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    color: colors.text,
-    fontSize: 14,
   },
   historyRow: {
     borderTopWidth: 1,
