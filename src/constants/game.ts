@@ -53,10 +53,16 @@ export function formForRank(rank: HunterRank): CharacterForm {
 // este archivo se actualiza para apuntar a los .png reales (Fase 6).
 // Por ahora todas usan el placeholder.
 const placeholder = require('../../assets/characters/placeholder.png');
+// Arte real generado (mismo asset para las 3 formas hasta tener variantes awakened/final).
+const kael = require('../../assets/characters/kael.png');
+const ragnar = require('../../assets/characters/ragnar.png');
+
+/** Slugs que ya tienen arte real (el resto cae a emoji/placeholder en la UI). */
+export const CHARS_WITH_ART = new Set<string>(['kael', 'ragnar']);
 
 export const characterImages: Record<string, Record<CharacterForm, number>> = {
-  kael: { base: placeholder, awakened: placeholder, final: placeholder },
-  ragnar: { base: placeholder, awakened: placeholder, final: placeholder },
+  kael: { base: kael, awakened: kael, final: kael },
+  ragnar: { base: ragnar, awakened: ragnar, final: ragnar },
   yuki: { base: placeholder, awakened: placeholder, final: placeholder },
   ren: { base: placeholder, awakened: placeholder, final: placeholder },
   aria: { base: placeholder, awakened: placeholder, final: placeholder },

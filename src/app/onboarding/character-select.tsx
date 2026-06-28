@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, Text } from 'react-native';
+import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, Text, Image } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../hooks/useAuth';
 import { useCharacters, useUpdateProfile } from '../../hooks/useData';
+import { characterImage, CHARS_WITH_ART } from '../../constants/game';
 import { colors, gradients, radius, spacing } from '../../theme/system';
 import {
   AuroraBackground,
@@ -92,7 +93,13 @@ export default function CharacterSelectScreen() {
                     style={styles.cardBorder}
                   >
                     <View style={[styles.card, styles.cardSelected]}>
-                      <Text style={styles.cardIcon}>{icon}</Text>
+                      {CHARS_WITH_ART.has(char.slug) ? (
+                        <View style={styles.charImgBox}>
+                          <Image source={characterImage(char.slug, 'E')} style={styles.charImg} resizeMode="cover" />
+                        </View>
+                      ) : (
+                        <Text style={styles.cardIcon}>{icon}</Text>
+                      )}
                       <GradientText
                         colors={[gradients.brand[0], gradients.brand[2]] as [string, string]}
                         style={styles.cardName}
@@ -104,7 +111,13 @@ export default function CharacterSelectScreen() {
                   </LinearGradient>
                 ) : (
                   <View style={[styles.card, styles.cardNormal]}>
-                    <Text style={styles.cardIcon}>{icon}</Text>
+                    {CHARS_WITH_ART.has(char.slug) ? (
+                      <View style={styles.charImgBox}>
+                        <Image source={characterImage(char.slug, 'E')} style={styles.charImg} resizeMode="cover" />
+                      </View>
+                    ) : (
+                      <Text style={styles.cardIcon}>{icon}</Text>
+                    )}
                     <Text style={styles.cardNameDim}>{char.name}</Text>
                     <SystemText dim style={styles.cardTitle}>{char.title}</SystemText>
                   </View>
@@ -205,6 +218,8 @@ const styles = StyleSheet.create({
   },
   cardSelected: { backgroundColor: colors.panel },
   cardIcon: { fontSize: 28, marginBottom: 4 },
+  charImgBox: { width: '100%', height: 158, borderRadius: radius.md, overflow: 'hidden', marginBottom: 6, backgroundColor: colors.bg },
+  charImg: { width: '100%', height: '100%' },
   cardName: { fontSize: 15, fontWeight: '800', textAlign: 'center', lineHeight: 18 },
   cardNameDim: { fontSize: 15, fontWeight: '800', color: colors.text, textAlign: 'center' },
   cardTitle: { fontSize: 11, textAlign: 'center' },
