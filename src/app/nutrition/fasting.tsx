@@ -134,7 +134,7 @@ export default function FastingScreen() {
               body: 'Has completado tu ayuno. Puedes comer ahora.',
               sound: true,
             },
-            trigger: { seconds: Math.ceil(delay / 1000) },
+            trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: Math.ceil(delay / 1000) },
           });
         }
       } catch (e) {
