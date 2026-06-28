@@ -12,6 +12,8 @@ const KEY =
   process.env.EXPO_PUBLIC_REVENUECAT_KEY ||
   '';
 
+const ALL_PLAN_IDS: PlanId[] = ['normal_monthly', 'normal_annual', 'family_monthly', 'family_annual'];
+
 let configured = false;
 
 export function initRevenueCat(userId?: string | null): void {
@@ -38,6 +40,37 @@ async function findPurchasable(
   const products = await Purchases.getProducts([planId]);
   if (products[0]) return { product: products[0] };
   return null;
+}
+
+// Precios localizados (priceString de la App Store/Play) por plan. Lo que falte
+// queda fuera del objeto → la UI usa su precio de respaldo.
+export async function getPlanPrices(): Promise<Partial<Record<PlanId, string>>> {
+  if (!KEY) return {};
+  const out: Partial<Record<PlanId, string>> = {};
+  try {
+    const offerings = await Purchases.getOfferings();
+    for (const pkg of offerings.current?.availablePackages ?? []) {
+      const byPkg = pkg.identifier as PlanId;
+      const byProduct = pkg.product.identifier as PlanId;
+      if (ALL_PLAN_IDS.includes(byPkg)) out[byPkg] = pkg.product.priceString;
+      else if (ALL_PLAN_IDS.includes(byProduct)) out[byProduct] = pkg.product.priceString;
+    }
+  } catch {
+    // sin offering → se intenta con productos directos abajo
+  }
+  const missing = ALL_PLAN_IDS.filter((id) => !out[id]);
+  if (missing.length) {
+    try {
+      const products = await Purchases.getProducts(missing);
+      for (const p of products) {
+        const id = p.identifier as PlanId;
+        if (ALL_PLAN_IDS.includes(id)) out[id] = p.priceString;
+      }
+    } catch {
+      // sin conexión a la tienda → se devuelve lo que se haya obtenido
+    }
+  }
+  return out;
 }
 
 export async function purchaseViaRevenueCat(

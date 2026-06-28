@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { RC_ENABLED, purchaseViaRevenueCat, restoreViaRevenueCat } from '../lib/revenuecat';
+import { RC_ENABLED, purchaseViaRevenueCat, restoreViaRevenueCat, getPlanPrices as rcGetPlanPrices } from '../lib/revenuecat';
 
 export type PlanId = 'normal_monthly' | 'normal_annual' | 'family_monthly' | 'family_annual';
 
@@ -53,6 +53,15 @@ export async function purchasePlan(planId: PlanId, userId: string): Promise<Purc
   // Web/Expo Go: mock (sin cobro)
   await new Promise((r) => setTimeout(r, 1200));
   return grantEntitlement(planId, userId, 'mock');
+}
+
+/**
+ * Precios localizados desde la tienda (RevenueCat `product.priceString`).
+ * En web/Expo Go devuelve `{}` → la UI usa sus precios de respaldo.
+ */
+export async function getPlanPrices(): Promise<Partial<Record<PlanId, string>>> {
+  if (!RC_ENABLED) return {};
+  return rcGetPlanPrices();
 }
 
 export async function restorePurchases(userId: string): Promise<PurchaseResult> {

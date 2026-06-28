@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, Text, Alert, Modal } from 'react-native';
+import { View, ScrollView, StyleSheet, Pressable, Text, Alert, Modal } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import Svg, { Circle } from 'react-native-svg';

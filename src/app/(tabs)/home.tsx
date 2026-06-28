@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, ScrollView, StyleSheet, SafeAreaView, Text, Pressable } from 'react-native';
+import { View, ScrollView, StyleSheet, Text, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';

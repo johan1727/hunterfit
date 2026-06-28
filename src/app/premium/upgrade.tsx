@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, ScrollView, StyleSheet, SafeAreaView, Pressable, Animated, Alert,
+  View, ScrollView, StyleSheet, Pressable, Animated, Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useHunterData } from '../../hooks/useHunterData';
 import { useAuth } from '../../hooks/useAuth';
-import { purchasePlan, restorePurchases, type PlanId } from '../../services/purchases';
+import { purchasePlan, restorePurchases, getPlanPrices, type PlanId } from '../../services/purchases';
 import {
   AuroraBackground, GradientText, SystemWindowPanel, SystemText,
 } from '../../components/system';
@@ -57,8 +58,21 @@ export default function UpgradeScreen() {
   const [purchasing, setPurchasing] = useState(false);
   const [period, setPeriod] = useState<'monthly' | 'annual'>('annual');
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('family_annual');
-  const plans = PLAN_MATRIX[period];
+  const [livePrices, setLivePrices] = useState<Partial<Record<PlanId, string>>>({});
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // Precios reales desde la App Store (RevenueCat). En web/Expo Go llega `{}`
+  // y se mantienen los precios de respaldo del PLAN_MATRIX.
+  useEffect(() => {
+    let mounted = true;
+    getPlanPrices().then((p) => { if (mounted) setLivePrices(p); }).catch(() => {});
+    return () => { mounted = false; };
+  }, []);
+
+  // El precio mostrado proviene de la tienda cuando está disponible.
+  const plans = PLAN_MATRIX[period].map((p) =>
+    livePrices[p.id] ? { ...p, price: livePrices[p.id]! } : p,
+  );
 
   // Al cambiar de periodo, asegurar que el plan seleccionado pertenezca a ese periodo
   function changePeriod(p: 'monthly' | 'annual') {

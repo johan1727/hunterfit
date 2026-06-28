@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, ScrollView, SafeAreaView, Pressable, Alert,
+  View, ScrollView, Pressable, Alert,
   StyleSheet, Dimensions, TextInput, FlatList, ActivityIndicator, Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';

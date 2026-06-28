@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, ScrollView, StyleSheet, SafeAreaView, Text, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, Text, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';

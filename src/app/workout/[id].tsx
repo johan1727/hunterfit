@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import {
-  View, ScrollView, StyleSheet, SafeAreaView, Pressable,
+  View, ScrollView, StyleSheet, Pressable,
   Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';

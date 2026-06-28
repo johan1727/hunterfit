@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
-  View, ScrollView, StyleSheet, SafeAreaView, Pressable, Alert,
+  View, ScrollView, StyleSheet, Pressable, Alert,
   Text,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';

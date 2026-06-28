@@ -7,6 +7,10 @@ export const RC_ENABLED = false;
 
 export function initRevenueCat(_userId?: string | null): void {}
 
+export async function getPlanPrices(): Promise<Partial<Record<PlanId, string>>> {
+  return {};
+}
+
 export async function purchaseViaRevenueCat(
   _planId: PlanId,
 ): Promise<{ ok: boolean; cancelled?: boolean; error?: string }> {

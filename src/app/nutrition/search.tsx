@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, FlatList, Alert, Text, TextInput, ActivityIndicator, Modal } from 'react-native';
+import { View, ScrollView, StyleSheet, Pressable, FlatList, Alert, Text, TextInput, ActivityIndicator, Modal } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { useRouter, useLocalSearchParams } from 'expo-router';
