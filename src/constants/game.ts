@@ -53,9 +53,11 @@ export function formForRank(rank: HunterRank): CharacterForm {
 // este archivo se actualiza para apuntar a los .png reales (Fase 6).
 // Por ahora todas usan el placeholder.
 const placeholder = require('../../assets/characters/placeholder.png');
-// Arte real generado (mismo asset para las 3 formas hasta tener variantes awakened/final).
+// Arte real: thumbnail (recortado a torso) + full (cuerpo completo para el detalle).
 const kael = require('../../assets/characters/kael.png');
 const ragnar = require('../../assets/characters/ragnar.png');
+const kaelFull = require('../../assets/characters/kael_full.png');
+const ragnarFull = require('../../assets/characters/ragnar_full.png');
 
 /** Slugs que ya tienen arte real (el resto cae a emoji/placeholder en la UI). */
 export const CHARS_WITH_ART = new Set<string>(['kael', 'ragnar']);
@@ -68,6 +70,16 @@ export const characterImages: Record<string, Record<CharacterForm, number>> = {
   aria: { base: placeholder, awakened: placeholder, final: placeholder },
   kenta: { base: placeholder, awakened: placeholder, final: placeholder },
 };
+
+// Imagen completa (cuerpo entero) para el detalle al seleccionar.
+const characterImagesFull: Record<string, number> = {
+  kael: kaelFull,
+  ragnar: ragnarFull,
+};
+
+export function characterFullImage(slug: string): number {
+  return characterImagesFull[slug] ?? placeholder;
+}
 
 export function characterImage(slug: string, rank: HunterRank): number {
   const forms = characterImages[slug];

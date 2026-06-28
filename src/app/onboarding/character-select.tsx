@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../hooks/useAuth';
 import { useCharacters, useUpdateProfile } from '../../hooks/useData';
-import { characterImage, CHARS_WITH_ART } from '../../constants/game';
+import { characterImage, characterFullImage, CHARS_WITH_ART } from '../../constants/game';
 import { colors, gradients, radius, spacing } from '../../theme/system';
 import {
   AuroraBackground,
@@ -131,6 +131,14 @@ export default function CharacterSelectScreen() {
         {selected ? (
           <Animated.View entering={FadeInDown.delay(0).springify()} key={selected.id}>
             <SystemWindowPanel style={styles.detailCard}>
+              {/* Imagen completa del personaje */}
+              {CHARS_WITH_ART.has(selected.slug) && (
+                <Image
+                  source={characterFullImage(selected.slug)}
+                  style={styles.detailImg}
+                  resizeMode="contain"
+                />
+              )}
               {/* Cabecera */}
               <View style={styles.detailHeader}>
                 <View style={{ flex: 1 }}>
@@ -225,6 +233,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 11, textAlign: 'center' },
 
   detailCard: { gap: spacing.md },
+  detailImg: { width: '100%', height: 380, borderRadius: radius.md, backgroundColor: colors.bg },
   detailHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
   detailName: { fontSize: 26, fontWeight: '900', lineHeight: 30 },
 

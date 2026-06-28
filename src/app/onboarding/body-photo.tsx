@@ -4,6 +4,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { useUpdateProfile } from '../../hooks/useData';
 import { useHunterData } from '../../hooks/useHunterData';
@@ -121,16 +122,7 @@ export default function BodyPhotoScreen() {
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                     style={styles.bodyIconGrad}
                   >
-                    {/* Silueta humana con formas simples */}
-                    <View style={styles.figureWrap}>
-                      <View style={styles.figureHead} />
-                      <View style={styles.figureBody} />
-                      <View style={styles.figureArms} />
-                      <View style={styles.figureLegsRow}>
-                        <View style={styles.figureLeg} />
-                        <View style={styles.figureLeg} />
-                      </View>
-                    </View>
+                    <Ionicons name="body" size={52} color="#fff" />
                   </LinearGradient>
                 </View>
 
@@ -141,7 +133,7 @@ export default function BodyPhotoScreen() {
                   Detecta tu tipo corporal, grupos musculares a priorizar y ajusta tu rutina automáticamente.
                 </SystemText>
 
-                <SystemButton title="📷  Tomar foto" variant="gradient" onPress={pickImage} />
+                <SystemButton title="Tomar foto" variant="gradient" onPress={pickImage} />
               </View>
             )}
           </SystemWindowPanel>
@@ -173,18 +165,13 @@ const styles = StyleSheet.create({
   placeholder: { alignItems: 'center', paddingVertical: spacing.lg },
   bodyIcon: {
     marginBottom: spacing.lg,
+    width: 100, height: 100, borderRadius: 50,
     shadowColor: gradients.brand[0],
     shadowOpacity: 0.6, shadowRadius: 24, shadowOffset: { width: 0, height: 6 },
   },
   bodyIconGrad: {
-    width: 100, height: 100, borderRadius: radius.pill,
+    width: 100, height: 100, borderRadius: 50,
     alignItems: 'center', justifyContent: 'center',
   },
-  figureWrap: { alignItems: 'center', gap: 3 },
-  figureHead: { width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.9)' },
-  figureBody: { width: 26, height: 22, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.85)' },
-  figureArms: { width: 38, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.7)', marginTop: -6 },
-  figureLegsRow: { flexDirection: 'row', gap: 6, marginTop: 2 },
-  figureLeg: { width: 10, height: 20, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.85)' },
   preview: { width: '100%', height: 340, borderRadius: radius.lg, marginBottom: spacing.md },
 });
