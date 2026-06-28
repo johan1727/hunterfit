@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, Alert, Share } from 'react-native';
+import { View, ScrollView, StyleSheet, SafeAreaView, Pressable, Alert, Share, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { useProfile } from '../../hooks/useData';
-import { createFamilyInvite, redeemFamilyInvite, getFamilyMembers, type FamilyMember } from '../../services/family';
+import {
+  createFamilyInvite, redeemFamilyInvite, getFamilyMembers,
+  leaveFamily, removeFamilyMember, type FamilyMember,
+} from '../../services/family';
+import { characterImage, CHARS_WITH_ART } from '../../constants/game';
 import {
   AuroraBackground, GradientText, SystemPanel, SystemWindowPanel, SystemText, SystemButton, SystemInput,
 } from '../../components/system';
@@ -22,9 +26,39 @@ export default function FamilyScreen() {
   const [redeemCode, setRedeemCode] = useState('');
   const [redeeming, setRedeeming] = useState(false);
 
+  function reload() { if (userId) getFamilyMembers(userId).then(setMembers); }
+
   useEffect(() => {
-    if (userId) getFamilyMembers(userId).then(setMembers);
+    reload();
   }, [userId, profile?.plan_source]);
+
+  async function handleLeave() {
+    Alert.alert('Salir del grupo', '¿Seguro? Perderás el acceso Premium del plan Familiar.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Salir', style: 'destructive', onPress: async () => {
+          const { success, error } = await leaveFamily();
+          if (!success) { Alert.alert('Error', error ?? 'No se pudo salir'); return; }
+          Alert.alert('Listo', 'Saliste del grupo Familiar.', [
+            { text: 'OK', onPress: () => router.replace('/(tabs)/home') },
+          ]);
+        },
+      },
+    ]);
+  }
+
+  function handleRemove(target: FamilyMember) {
+    Alert.alert('Quitar miembro', `¿Quitar a ${target.username || 'este cazador'} del grupo?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Quitar', style: 'destructive', onPress: async () => {
+          const { success, error } = await removeFamilyMember(target.user_id);
+          if (!success) { Alert.alert('Error', error ?? 'No se pudo quitar'); return; }
+          reload();
+        },
+      },
+    ]);
+  }
 
   async function handleGenerate() {
     setGenerating(true);
@@ -105,20 +139,36 @@ export default function FamilyScreen() {
             <SystemText style={styles.sectionLabel}>Miembros ({members.length}/6)</SystemText>
             {members.map((m) => (
               <View key={m.user_id} style={styles.memberRow}>
-                <Ionicons name="person-circle-outline" size={22} color={colors.glow} />
+                {m.character_slug && CHARS_WITH_ART.has(m.character_slug) ? (
+                  <Image source={characterImage(m.character_slug, 'E')} style={styles.memberAvatar} resizeMode="cover" />
+                ) : (
+                  <Ionicons name="person-circle-outline" size={32} color={colors.glow} />
+                )}
                 <SystemText style={{ flex: 1, fontSize: 14 }}>
                   {m.user_id === userId ? 'Tú' : (m.username || 'Cazador')}
                 </SystemText>
-                {m.user_id === userId && isFamilyOwner && (
+                {m.is_owner ? (
                   <SystemText dim style={{ fontSize: 11 }}>Dueño</SystemText>
-                )}
+                ) : isFamilyOwner && m.user_id !== userId ? (
+                  <Pressable onPress={() => handleRemove(m)} hitSlop={8} style={styles.removeBtn}>
+                    <Ionicons name="close" size={16} color={colors.danger} />
+                  </Pressable>
+                ) : null}
               </View>
             ))}
           </SystemPanel>
         )}
 
-        {/* Cualquiera: canjear código */}
-        {!isFamilyOwner && (
+        {/* Miembro (no dueño): salir del grupo */}
+        {!isFamilyOwner && members.some((m) => m.user_id === userId) && (
+          <Pressable onPress={handleLeave} style={styles.leaveBtn}>
+            <Ionicons name="exit-outline" size={16} color={colors.danger} />
+            <SystemText style={{ color: colors.danger, fontSize: 13, fontWeight: '700' }}>Salir del grupo Familiar</SystemText>
+          </Pressable>
+        )}
+
+        {/* Cualquiera fuera de un grupo: canjear código */}
+        {!isFamilyOwner && !members.some((m) => m.user_id === userId) && (
           <SystemPanel style={{ gap: spacing.sm }}>
             <SystemText style={{ fontWeight: '800', fontSize: 16 }}>¿Tienes un código?</SystemText>
             <SystemText dim style={{ fontSize: 13 }}>
@@ -162,4 +212,14 @@ const styles = StyleSheet.create({
   },
   codeText: { fontSize: 30, fontWeight: '900', color: colors.text, letterSpacing: 4 },
   memberRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6 },
+  memberAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.bgElevated },
+  removeBtn: {
+    width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.danger + '18', borderWidth: 1, borderColor: colors.danger + '40',
+  },
+  leaveBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: spacing.md, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.danger + '40', backgroundColor: colors.danger + '0F',
+  },
 });

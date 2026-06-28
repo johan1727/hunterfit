@@ -1,6 +1,9 @@
 import { supabase } from '../lib/supabase';
 
-export type FamilyMember = { user_id: string; joined_at: string; username: string | null; is_owner?: boolean };
+export type FamilyMember = {
+  user_id: string; joined_at: string; username: string | null;
+  is_owner?: boolean; character_slug?: string | null;
+};
 
 /** Crea (o reusa) el grupo familiar del dueño y emite un código de invitación. */
 export async function createFamilyInvite(): Promise<{ code?: string; error?: string }> {
@@ -25,5 +28,20 @@ export async function getFamilyMembers(_userId: string): Promise<FamilyMember[]>
     joined_at: m.joined_at,
     username: m.username ?? null,
     is_owner: m.is_owner,
+    character_slug: m.character_slug ?? null,
   }));
+}
+
+/** Salir del grupo familiar (miembro no-dueño). Pierde el premium del plan. */
+export async function leaveFamily(): Promise<{ success: boolean; error?: string }> {
+  const { error } = await supabase.rpc('leave_family');
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+/** Quitar a un miembro del grupo (solo dueño). */
+export async function removeFamilyMember(targetUserId: string): Promise<{ success: boolean; error?: string }> {
+  const { error } = await supabase.rpc('remove_family_member', { target: targetUserId });
+  if (error) return { success: false, error: error.message };
+  return { success: true };
 }
