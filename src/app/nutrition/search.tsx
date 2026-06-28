@@ -220,6 +220,10 @@ export default function SearchFoodScreen() {
   const [voiceLoading, setVoiceLoading] = useState(false);
 
   async function startRecording() {
+    if (isDemo) {
+      Alert.alert('Modo exploración', 'El registro por voz no está disponible en modo demo.');
+      return;
+    }
     try {
       const { granted } = await Audio.requestPermissionsAsync();
       if (!granted) {

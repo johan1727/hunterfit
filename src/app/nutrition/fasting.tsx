@@ -6,6 +6,7 @@ import Svg, { Circle } from 'react-native-svg';
 import * as Notifications from 'expo-notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { useHunterData } from '../../hooks/useHunterData';
+import { useDemoStore } from '../../lib/demoStore';
 import {
   useActiveFasting, useStartFasting, useStopFasting, useFastingStreak,
 } from '../../hooks/useData';
@@ -93,6 +94,7 @@ function CircleTimer({
 export default function FastingScreen() {
   const router = useRouter();
   const { userId } = useHunterData();
+  const isDemo = useDemoStore((s) => s.isDemo);
   const { data: activeFast } = useActiveFasting(userId);
   const { data: streak = 0 } = useFastingStreak(userId);
   const startFasting = useStartFasting(userId);
@@ -146,6 +148,10 @@ export default function FastingScreen() {
   }, [activeFast]);
 
   const handleStartFasting = async (hours: number) => {
+    if (isDemo) {
+      Alert.alert('Modo demo', 'No disponible en modo exploración');
+      return;
+    }
     try {
       await startFasting.mutateAsync(hours);
       // Request notification permission
