@@ -171,7 +171,8 @@ export default function SearchFoodScreen() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSubcat, setSelectedSubcat] = useState<string | null>(null);
-  const { data: searchResults = [], isLoading: searching } = useFoodSearch(searchTerm, selectedCategory);
+  // When user types, search all categories — text query takes precedence over category filter
+  const { data: searchResults = [], isLoading: searching } = useFoodSearch(searchTerm);
   const { data: defaultFoods = [] } = useDefaultFoods(selectedCategory);
   const { data: dbCategories = [] } = useFoodCategories();
   const { data: recentFoods = [] } = useRecentFoods(isDemo ? null : userId);
@@ -184,7 +185,8 @@ export default function SearchFoodScreen() {
   // Mostrar resultados de búsqueda si hay (≥2 caracteres), si no mostrar alimentos por defecto
   const baseFoods = searchTerm.length >= 2 ? searchResults : defaultFoods;
   // Filtro de subcategoría (cuando hay una seleccionada dentro de una categoría)
-  const foods = selectedSubcat
+  // Subcat filter also bypassed during text search
+  const foods = (selectedSubcat && searchTerm.length < 2)
     ? baseFoods.filter(f => classifySubcat(f.name_es, selectedCategory) === selectedSubcat)
     : baseFoods;
   const subcats = selectedCategory !== 'all' ? SUBCATS[selectedCategory] : undefined;
@@ -254,6 +256,10 @@ export default function SearchFoodScreen() {
     if (!userId) return;
     if (isDemo) {
       Alert.alert('Modo exploración', 'El análisis con IA no está disponible en modo demo.');
+      return;
+    }
+    if (!profile?.is_premium) {
+      router.push('/premium/upgrade');
       return;
     }
     try {
