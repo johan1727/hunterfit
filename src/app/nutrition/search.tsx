@@ -469,7 +469,7 @@ export default function SearchFoodScreen() {
           <View style={styles.searchHero}>
             <Ionicons name="search" size={20} color={colors.textDim} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { flex: 1 }]}
               placeholder="Busca pollo, arroz, manzana…"
               placeholderTextColor={colors.textFaint}
               value={searchTerm}
@@ -481,6 +481,12 @@ export default function SearchFoodScreen() {
                 <Ionicons name="close-circle" size={18} color={colors.textFaint} />
               </Pressable>
             )}
+            <Pressable
+              onPress={() => setShowVoice(true)}
+              style={styles.micBtn}
+            >
+              <Ionicons name="mic" size={20} color={colors.primary} />
+            </Pressable>
           </View>
 
           {/* Acciones compactas */}
@@ -872,6 +878,41 @@ export default function SearchFoodScreen() {
             />
           </SystemWindowPanel>
         )}
+
+        {/* Voice Recording Modal */}
+        <Modal visible={showVoice} transparent animationType="slide">
+          <View style={styles.voiceOverlay}>
+            <SystemPanel style={styles.voicePanel}>
+              <GradientText style={{ fontSize: 20, marginBottom: 8 }}>Registro por Voz</GradientText>
+              <SystemText dim style={{ textAlign: 'center', marginBottom: 24 }}>
+                {recording ? 'Grabando… toca para terminar' : voiceLoading ? 'Analizando…' : 'Toca el micrófono y di el alimento'}
+              </SystemText>
+              <Pressable
+                onPress={recording ? stopRecordingAndAnalyze : startRecording}
+                disabled={voiceLoading}
+                style={[styles.micBig, recording && styles.micBigActive]}
+              >
+                <Ionicons
+                  name={voiceLoading ? 'hourglass' : recording ? 'stop' : 'mic'}
+                  size={36}
+                  color="#fff"
+                />
+              </Pressable>
+              <SystemButton
+                label="Cancelar"
+                variant="ghost"
+                style={{ marginTop: 16 }}
+                onPress={async () => {
+                  if (recording) {
+                    await recording.stopAndUnloadAsync().catch(() => {});
+                    setRecording(null);
+                  }
+                  setShowVoice(false);
+                }}
+              />
+            </SystemPanel>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -907,7 +948,17 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: colors.panelBorder,
     paddingHorizontal: spacing.md, height: 54,
   },
-  searchInput: { flex: 1, color: colors.text, fontSize: 16, fontWeight: '600', height: '100%' },
+  searchInput: { color: colors.text, fontSize: 16, fontWeight: '600', height: '100%' },
+  micBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
 
   actionRow: { flexDirection: 'row', gap: spacing.sm },
   actionChip: {
@@ -978,4 +1029,27 @@ const styles = StyleSheet.create({
   qtyRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   qtyUnit: { fontSize: 15, fontWeight: '700', width: 20 },
   nutritionBox: { padding: spacing.md },
+
+  voiceOverlay: {
+    flex: 1,
+    backgroundColor: '#00000080',
+    justifyContent: 'flex-end',
+  },
+  voicePanel: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    padding: 32,
+    alignItems: 'center',
+  },
+  micBig: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  micBigActive: {
+    backgroundColor: colors.danger,
+  },
 });
