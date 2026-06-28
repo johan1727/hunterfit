@@ -249,7 +249,7 @@ export default function SearchFoodScreen() {
       // Read as base64
       const { File } = await import('expo-file-system');
       const file = new File(uri);
-      const base64 = await file.readAsText('base64');
+      const base64 = await file.base64();
 
       const { data, error } = await supabase.functions.invoke('voice-food', {
         body: { audio_base64: base64, mime_type: 'audio/m4a' },
