@@ -395,3 +395,47 @@ export function useCopyYesterday(userId: string | null, date: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['meals', userId, date] }),
   });
 }
+
+// ── Body Measurements ────────────────────────────────────────────────────────
+
+export interface BodyMeasurement {
+  id: string;
+  taken_at: string;
+  weight_kg: number | null;
+  waist_cm: number | null;
+  hips_cm: number | null;
+  chest_cm: number | null;
+  arm_cm: number | null;
+  body_fat_pct: number | null;
+  notes: string | null;
+}
+
+export function useBodyMeasurements(userId: string | null) {
+  return useQuery({
+    queryKey: ['body-measurements', userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<BodyMeasurement[]> => {
+      const { data, error } = await supabase
+        .from('body_measurements')
+        .select('*')
+        .eq('user_id', userId!)
+        .order('taken_at', { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      return data as BodyMeasurement[];
+    },
+  });
+}
+
+export function useAddBodyMeasurement(userId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (m: Omit<BodyMeasurement, 'id'>) => {
+      const { error } = await supabase
+        .from('body_measurements')
+        .insert({ ...m, user_id: userId! });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['body-measurements', userId] }),
+  });
+}

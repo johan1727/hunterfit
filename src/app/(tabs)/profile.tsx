@@ -330,6 +330,7 @@ export default function ProfileScreen() {
                 { icon: 'medal-outline', label: 'Mis logros', iconColor: colors.warning, onPress: () => router.push('/profile/badges' as any) },
                 { icon: 'trophy-outline', label: 'Leaderboard global', iconColor: colors.warning, onPress: () => router.push('/social/leaderboard' as any) },
                 { icon: 'heart-outline', label: 'Salud y pasos', iconColor: colors.danger, onPress: () => router.push('/profile/health' as any) },
+                { icon: 'body', label: 'Seguimiento corporal', onPress: () => router.push('/profile/body-tracking') },
                 { icon: 'camera-outline', label: 'Fotos de progreso', onPress: () => router.push('/profile/photos') },
               ]}
             />
