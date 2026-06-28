@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 
-export type FamilyMember = { user_id: string; joined_at: string; username: string | null };
+export type FamilyMember = { user_id: string; joined_at: string; username: string | null; is_owner?: boolean };
 
 /** Crea (o reusa) el grupo familiar del dueño y emite un código de invitación. */
 export async function createFamilyInvite(): Promise<{ code?: string; error?: string }> {
@@ -16,24 +16,14 @@ export async function redeemFamilyInvite(code: string): Promise<{ success: boole
   return { success: true };
 }
 
-/** Miembros del grupo familiar del usuario (si pertenece a alguno). */
-export async function getFamilyMembers(userId: string): Promise<FamilyMember[]> {
-  // Grupo del que el usuario es dueño o miembro
-  const { data: membership } = await supabase
-    .from('family_members')
-    .select('group_id')
-    .eq('user_id', userId)
-    .maybeSingle();
-  if (!membership) return [];
-  const { data, error } = await supabase
-    .from('family_members')
-    .select('user_id, joined_at, profiles(username)')
-    .eq('group_id', membership.group_id)
-    .order('joined_at');
+/** Miembros del grupo familiar del usuario (vía RPC SECURITY DEFINER). */
+export async function getFamilyMembers(_userId: string): Promise<FamilyMember[]> {
+  const { data, error } = await supabase.rpc('get_family_members');
   if (error) return [];
   return (data ?? []).map((m: any) => ({
     user_id: m.user_id,
     joined_at: m.joined_at,
-    username: m.profiles?.username ?? null,
+    username: m.username ?? null,
+    is_owner: m.is_owner,
   }));
 }
