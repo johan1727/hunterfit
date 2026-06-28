@@ -111,7 +111,7 @@ export default function WorkoutsScreen() {
         {!isDemo && routines.length === 0 ? (
           <EmptyState
             {...EMPTY_STATES.workouts}
-            cta={{ label: 'Ver rutinas', onPress: () => router.push('/routines') }}
+            cta={{ label: generating ? 'Generando…' : 'Generar plan', onPress: handleGeneratePlan }}
           />
         ) : (
           <>

@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View,
-  type PressableProps, type StyleProp, type TextInputProps, type TextStyle, type ViewProps,
+  type PressableProps, type StyleProp, type TextInputProps, type TextProps, type TextStyle, type ViewProps,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
@@ -48,8 +48,8 @@ export function SystemLabel({ children, style }: { children: React.ReactNode; st
   return <Text style={[styles.label, style]}>{children}</Text>;
 }
 
-export function SystemText({ children, dim, style }: { children: React.ReactNode; dim?: boolean; style?: StyleProp<TextStyle> }) {
-  return <Text style={[styles.text, dim && { color: colors.textDim }, style]}>{children}</Text>;
+export function SystemText({ children, dim, style, ...rest }: { children: React.ReactNode; dim?: boolean; style?: StyleProp<TextStyle> } & Omit<TextProps, 'style' | 'children'>) {
+  return <Text style={[styles.text, dim && { color: colors.textDim }, style]} {...rest}>{children}</Text>;
 }
 
 /** Titular grande con relleno de gradiente (azul→violeta→rosa, estilo Kokonut) */

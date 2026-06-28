@@ -140,7 +140,7 @@ export default function UpgradeScreen() {
             Desbloquea todo{'\n'}tu potencial
           </GradientText>
           <SystemText dim style={{ fontSize: 15, textAlign: 'center', lineHeight: 22 }}>
-            Análisis con IA, plan de comidas semanal, todos los personajes y más.
+            Análisis con IA, recetas inteligentes, composición corporal y más.
           </SystemText>
         </View>
 
