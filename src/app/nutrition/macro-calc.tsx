@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { useProfile, useUpdateProfile } from '../../hooks/useData';
 import { calculateTargets } from '../../services/nutrition';
-import { colors, gradients, radius, spacing } from '../../theme/system';
+import { colors, gradients, heroSizes, radius, spacing } from '../../theme/system';
 import {
   AuroraBackground, GradientText, Pill, ProgressBar,
   SystemPanel, SystemWindowPanel, SystemText, SystemButton, SystemInput,
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: spacing.lg, paddingTop: spacing.xl, gap: spacing.md, paddingBottom: 80 },
   header: { gap: spacing.sm },
-  title: { fontSize: 38, lineHeight: 42, fontWeight: '900' },
+  title: { ...heroSizes.heroSm, fontWeight: '900' },
   sectionLabel: { fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: colors.textFaint },
   previewGrid: { flexDirection: 'row', gap: spacing.sm },
   macroRow: { flexDirection: 'row', gap: spacing.sm },

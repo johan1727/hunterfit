@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const GEMINI_MODEL = 'gemini-2.0-flash';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
@@ -12,6 +13,20 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    if (!supabaseUrl || !supabaseAnonKey) throw new Error('Config de Supabase no disponible');
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
+    });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'No autorizado' }), {
+        status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { image_base64, mime_type = 'image/jpeg' } = await req.json();
     if (!image_base64) {
       return new Response(JSON.stringify({ error: 'image_base64 requerido' }), {

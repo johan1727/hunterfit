@@ -48,6 +48,16 @@ export const rankColors: Record<string, string> = {
 
 export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 } as const;
 
+// Escala de titulares para GradientText — antes cada pantalla copiaba a mano
+// fontSize/lineHeight (46/48/42/38 sin regla). Usar vía prop `size` de
+// GradientText o spreadeando en un estilo local: `title: { ...heroSizes.hero }`.
+export const heroSizes = {
+  heroXl: { fontSize: 48, lineHeight: 52 },
+  heroLg: { fontSize: 46, lineHeight: 48 },
+  hero: { fontSize: 42, lineHeight: 46 },
+  heroSm: { fontSize: 38, lineHeight: 42 },
+} as const;
+
 // Numeral tabular — para readouts del "Sistema" (stats, macros, precios, contadores)
 export const numeric: import('react-native').TextStyle = { fontVariant: ['tabular-nums'] };
 

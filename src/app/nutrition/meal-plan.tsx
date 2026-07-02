@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { localDateString } from '../../lib/dates';
-import { colors, gradients, radius, spacing } from '../../theme/system';
+import { colors, gradients, heroSizes, radius, spacing } from '../../theme/system';
 import {
   AuroraBackground, GradientText, Pill, SystemPanel, SystemText, SystemButton, SystemInput, SystemWindowPanel,
 } from '../../components/system';
@@ -24,7 +24,7 @@ const MEAL_LABELS: Record<string, string> = { desayuno: 'Desayuno', comida: 'Com
 function offsetDate(base: string, days: number): string {
   const d = new Date(base + 'T12:00:00');
   d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
+  return localDateString(d);
 }
 
 function useMealPlan(userId: string | null, date: string) {
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: spacing.md, paddingTop: spacing.lg, gap: spacing.sm, paddingBottom: 100 },
   header: { gap: spacing.sm, marginBottom: spacing.sm },
-  title: { fontSize: 38, lineHeight: 40, fontWeight: '900' },
+  title: { ...heroSizes.heroSm, fontWeight: '900' },
 
   dateNav: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, alignSelf: 'flex-start' },
   dateArrow: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bgElevated, borderRadius: radius.md, borderWidth: 1, borderColor: colors.panelBorder },

@@ -1,5 +1,6 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import Fuse from 'fuse.js';
+import { supabase } from '../lib/supabase';
+import { describeFunctionError } from './ai';
 import type { Food } from '../types/db';
 
 // ============================================================================
@@ -44,64 +45,6 @@ export interface GeneratedRecipe {
 }
 
 // ============================================================================
-// GEMINI CLIENT
-// ============================================================================
-
-const getGenAIClient = () => {
-  const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-  if (!apiKey) {
-    console.error('EXPO_PUBLIC_GEMINI_API_KEY no configurada. Verifica .env');
-    throw new Error('API key de Gemini no encontrada. Verifica EXPO_PUBLIC_GEMINI_API_KEY en .env');
-  }
-  return new GoogleGenerativeAI(apiKey);
-};
-
-// ============================================================================
-// PROMPT BUILDER
-// ============================================================================
-
-const buildRecipePrompt = (request: RecipeRequest, availableFoods: Food[]): string => {
-  // Limitar a 50 alimentos para respuesta más rápida
-  const foodList = availableFoods
-    .slice(0, 50)
-    .map(
-      f =>
-        `- ${f.name_es} (${f.kcal} kcal, ${f.protein_g}g prot, ${f.carbs_g}g carbs, ${f.fat_g}g fat)`
-    )
-    .join('\n');
-
-  const mealTypeMap: Record<string, string> = {
-    breakfast: 'desayuno',
-    lunch: 'comida',
-    dinner: 'cena',
-    snack: 'snack/merienda',
-  };
-
-  const prefsText = request.preferences?.length
-    ? `\nPreferencias del usuario: incluir principalmente alimentos de los grupos ${request.preferences.join(', ')}.`
-    : '';
-
-  return `Crea una receta rápida para ${mealTypeMap[request.mealType] || request.mealType}.${prefsText}
-
-Macros objetivo: ${request.userCalories} kcal, ${request.userProtein}g prot, ${request.userCarbs}g carbs, ${request.userFat}g grasa.
-
-Alimentos disponibles:
-${foodList}
-
-Instrucciones: Selecciona SOLO alimentos de la lista. Aproxima los macros (±10%). Receta simple en 15-30 min. Cocina: ${request.cuisine || 'Latina'}.
-
-Responde SOLO en JSON (sin markdown, sin bloques de código):
-{
-  "title": "Nombre creativo",
-  "description": "Descripción breve",
-  "foods": [{"name": "Alimento de la lista", "quantity_g": 150}],
-  "prepTime": 20,
-  "difficulty": "fácil",
-  "steps": ["Paso 1", "Paso 2", "Paso 3"]
-}`;
-};
-
-// ============================================================================
 // MAIN FUNCTION
 // ============================================================================
 
@@ -114,20 +57,25 @@ export async function generateRecipeWithGemini(
       throw new Error('No hay alimentos disponibles en la base de datos');
     }
 
-    const genAI = getGenAIClient();
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    const prompt = buildRecipePrompt(request, availableFoods);
+    // Solo enviamos una proyección slim (sin ids/porciones) al Edge Function;
+    // el prompt completo se construye server-side.
+    const slimFoods = availableFoods.slice(0, 50).map(f => ({
+      name_es: f.name_es,
+      kcal: f.kcal,
+      protein_g: f.protein_g,
+      carbs_g: f.carbs_g,
+      fat_g: f.fat_g,
+    }));
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    const { data, error } = await supabase.functions.invoke('generate-recipe', {
+      body: { mode: 'recipe', request, foods: slimFoods },
+    });
+    if (error) throw new Error(await describeFunctionError(error));
 
-    // Extract JSON from response (handle potential markdown code blocks)
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('No se encontró JSON válido en la respuesta de Gemini');
+    const parsed = data?.recipe;
+    if (!parsed || !Array.isArray(parsed.foods)) {
+      throw new Error('La receta generada no tiene el formato esperado. Intenta de nuevo.');
     }
-
-    const parsed = JSON.parse(jsonMatch[0]);
 
     // Map foods back with macros from database
     // Initialize Fuse.js for fuzzy matching
@@ -139,7 +87,7 @@ export async function generateRecipeWithGemini(
     });
 
     const recipeFoods: RecipeFood[] = parsed.foods.map((f: any) => {
-      const searchName = f.name.toLowerCase().trim();
+      const searchName = String(f?.name ?? '').toLowerCase().trim();
 
       // 1. Busca match exacto
       let foodData = availableFoods.find(af =>
@@ -259,27 +207,24 @@ export async function askRecipeQuestion(
   question: string,
   recipe: GeneratedRecipe
 ): Promise<string> {
-  const genAI = getGenAIClient();
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
-  const context = `
-Receta: ${recipe.title}
-Descripción: ${recipe.description}
-Ingredientes: ${recipe.foods.map(f => `${f.name_es} (${f.quantity_g}g)`).join(', ')}
-Pasos: ${recipe.steps.join(' | ')}
-Macros totales: ${recipe.totalKcal} kcal, ${recipe.totalProtein}g proteína, ${recipe.totalCarbs}g carbos, ${recipe.totalFat}g grasa
-Dificultad: ${recipe.difficulty}, Tiempo: ${recipe.prepTime} min
-`;
-
-  const prompt = `Eres un nutricionista y chef experto. Responde de forma concisa y útil (máximo 3 oraciones) la siguiente pregunta sobre esta receta.
-
-RECETA:
-${context}
-
-PREGUNTA: ${question}
-
-Responde en español, de forma directa y práctica.`;
-
-  const result = await model.generateContent(prompt);
-  return result.response.text().trim();
+  const { data, error } = await supabase.functions.invoke('generate-recipe', {
+    body: {
+      mode: 'ask',
+      question,
+      recipe: {
+        title: recipe.title,
+        description: recipe.description,
+        foods: recipe.foods.map(f => ({ name_es: f.name_es, quantity_g: f.quantity_g })),
+        steps: recipe.steps,
+        totalKcal: recipe.totalKcal,
+        totalProtein: recipe.totalProtein,
+        totalCarbs: recipe.totalCarbs,
+        totalFat: recipe.totalFat,
+        difficulty: recipe.difficulty,
+        prepTime: recipe.prepTime,
+      },
+    },
+  });
+  if (error) throw new Error(await describeFunctionError(error));
+  return data?.answer ?? '';
 }

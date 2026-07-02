@@ -101,6 +101,7 @@ const styles = StyleSheet.create({
   glowWrap: {
     shadowColor: gradients.brand[0],
     shadowOpacity: 0.9, shadowRadius: 40, shadowOffset: { width: 0, height: 0 },
+    elevation: 20,
     marginBottom: spacing.sm,
   },
   glowRing: {

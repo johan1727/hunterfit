@@ -11,7 +11,7 @@ import { useDemoStore } from '../../lib/demoStore';
 import {
   useActiveFasting, useStartFasting, useStopFasting, useFastingStreak,
 } from '../../hooks/useData';
-import { colors, radius, spacing } from '../../theme/system';
+import { colors, heroSizes, radius, spacing } from '../../theme/system';
 import {
   AuroraBackground, GradientText, SystemPanel, SystemText, SystemButton,
 } from '../../components/system';
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
     borderColor: colors.panelBorder,
   },
   streakText: { color: colors.text, fontSize: 13, fontWeight: '700' },
-  title: { fontSize: 42, lineHeight: 44 },
+  title: { ...heroSizes.hero },
 
   scheduleItem: {
     flexDirection: 'row',

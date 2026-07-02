@@ -37,7 +37,7 @@ function getWeekKey(date = new Date()) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() - d.getDay()); // domingo de esta semana
-  return d.toISOString().split('T')[0];
+  return localDateString(d);
 }
 
 /** Devuelve las misiones de hoy; si no existen, las genera (3 por día según nivel). */

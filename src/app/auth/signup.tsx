@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { validation } from '../../lib/validation';
-import { colors, gradients, spacing } from '../../theme/system';
+import { colors, gradients, heroSizes, spacing } from '../../theme/system';
 import {
   AuroraBackground, GradientText, Pill,
   SystemInput, SystemButton, SystemText, SystemLabel, SystemWindowPanel,
@@ -25,7 +25,8 @@ export default function SignupScreen() {
   async function handleSignup() {
     setMsg(null);
     if (password !== confirm) { setMsg({ text: 'Las contraseñas no coinciden', ok: false }); return; }
-    if (password.length < 6) { setMsg({ text: 'Mínimo 6 caracteres', ok: false }); return; }
+    const passwordCheck = validation.password(password);
+    if (!passwordCheck.valid) { setMsg({ text: passwordCheck.error!, ok: false }); return; }
     setLoading(true);
     const { error } = await supabase.auth.signUp({ email, password });
     setLoading(false);
@@ -151,7 +152,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, justifyContent: 'center', paddingHorizontal: spacing.lg, gap: spacing.xl },
   logo: { gap: spacing.md },
-  appName: { fontSize: 48, lineHeight: 50, fontWeight: '900' },
+  appName: { ...heroSizes.heroXl, fontWeight: '900' },
   card: {},
   eyebrow: { fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: spacing.lg },
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingBottom: spacing.md },

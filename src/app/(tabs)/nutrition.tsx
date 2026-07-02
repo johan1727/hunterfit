@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useHunterData } from '../../hooks/useHunterData';
 import { useWaterToday, useAddWater, useCopyYesterday, useMealLogs } from '../../hooks/useData';
 import { localDateString } from '../../lib/dates';
-import { colors, gradients, radius, spacing } from '../../theme/system';
+import { colors, gradients, heroSizes, radius, spacing } from '../../theme/system';
 import {
   AuroraBackground, GradientText, Pill, ProgressBar,
   SystemPanel, SystemText, SystemButton,
@@ -36,7 +36,7 @@ const WATER_GOAL_ML = 2500;
 function offsetDate(base: string, days: number): string {
   const d = new Date(base + 'T12:00:00');
   d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
+  return localDateString(d);
 }
 
 export default function NutritionScreen() {
@@ -126,10 +126,18 @@ export default function NutritionScreen() {
             <Pressable
               onPress={() => setSelectedDate((d) => offsetDate(d, -1))}
               style={({ pressed }) => [styles.dateArrow, pressed && { opacity: 0.5 }]}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Día anterior"
             >
               <Ionicons name="chevron-back" size={20} color={colors.text} />
             </Pressable>
-            <Pressable onPress={() => setSelectedDate(today)} style={styles.datePill}>
+            <Pressable
+              onPress={() => setSelectedDate(today)}
+              style={styles.datePill}
+              accessibilityRole="button"
+              accessibilityLabel="Ir a hoy"
+            >
               <Text style={styles.datePillText}>
                 {isToday ? 'Hoy' : new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })}
               </Text>
@@ -138,6 +146,9 @@ export default function NutritionScreen() {
               onPress={() => !isToday && setSelectedDate((d) => offsetDate(d, 1))}
               style={({ pressed }) => [styles.dateArrow, pressed && { opacity: 0.5 }, isToday && { opacity: 0.25 }]}
               disabled={isToday}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Día siguiente"
             >
               <Ionicons name="chevron-forward" size={20} color={colors.text} />
             </Pressable>
@@ -193,6 +204,9 @@ export default function NutritionScreen() {
                     key={ml}
                     onPress={() => addWater.mutate(ml)}
                     style={({ pressed }) => [styles.waterBtn, pressed && { opacity: 0.6 }]}
+                    hitSlop={6}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Agregar ${ml} mililitros de agua`}
                   >
                     <Text style={styles.waterBtnText}>+{ml}</Text>
                   </Pressable>
@@ -346,7 +360,7 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.md, paddingTop: spacing.lg, gap: spacing.sm, paddingBottom: 100 },
 
   header: { gap: spacing.sm, marginBottom: spacing.sm },
-  title: { fontSize: 46, lineHeight: 48 },
+  title: { ...heroSizes.heroLg },
 
   dateNav: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,

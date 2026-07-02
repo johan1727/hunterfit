@@ -230,14 +230,14 @@ function RecipeHero({ recipe, onFav, isFav }: {
   return (
     <Animated.View entering={FadeInUp.springify()} style={styles.heroCard}>
       <LinearGradient
-        colors={['#0C1235', '#1A0B2E', '#07080B']}
+        colors={['#0C1235', '#1A0B2E', colors.bg]}
         style={StyleSheet.absoluteFill}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
       {/* Glow orbs */}
-      <View style={[styles.glowOrb, { top: 20, left: 30, backgroundColor: '#5B7CFF33' }]} />
-      <View style={[styles.glowOrb, { top: 60, right: 20, backgroundColor: '#C084FC22', width: 120, height: 120 }]} />
+      <View style={[styles.glowOrb, { top: 20, left: 30, backgroundColor: colors.primary + '33' }]} />
+      <View style={[styles.glowOrb, { top: 60, right: 20, backgroundColor: colors.accent + '22', width: 120, height: 120 }]} />
 
       {/* Top bar */}
       <View style={styles.heroTopBar}>
@@ -250,7 +250,7 @@ function RecipeHero({ recipe, onFav, isFav }: {
           <Ionicons
             name={isFav ? 'heart' : 'heart-outline'}
             size={22}
-            color={isFav ? '#FB7185' : colors.text}
+            color={isFav ? colors.danger : colors.text}
           />
         </Pressable>
       </View>
@@ -266,7 +266,7 @@ function RecipeHero({ recipe, onFav, isFav }: {
           colors={['transparent', 'rgba(7,8,11,0.95)']}
           style={StyleSheet.absoluteFill}
         />
-        <GradientText style={styles.heroTitle} colors={['#F4F6FB', '#C084FC'] as [string, string]}>
+        <GradientText style={styles.heroTitle} colors={[colors.text, colors.accent] as [string, string]}>
           {recipe.title}
         </GradientText>
 
@@ -558,15 +558,15 @@ export default function RecipeScreen() {
 
         {error && (
           <Animated.View entering={FadeInDown.springify()} style={styles.errorCard}>
-            <Ionicons name="warning-outline" size={20} color="#FB7185" />
-            <SystemText style={{ color: '#FB7185', fontSize: 13, flex: 1 }}>
+            <Ionicons name="warning-outline" size={20} color={colors.danger} />
+            <SystemText style={{ color: colors.danger, fontSize: 13, flex: 1 }}>
               {(error as any)?.message?.replace('RecipeAI Error: ', '') ?? 'Error al generar recetas. Verifica tu conexión.'}
             </SystemText>
             <Pressable
               onPress={handleGenerate}
-              style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#FB718520' }}
+              style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.danger + '20' }}
             >
-              <SystemText style={{ color: '#FB7185', fontSize: 12, fontWeight: '700' }}>Reintentar</SystemText>
+              <SystemText style={{ color: colors.danger, fontSize: 12, fontWeight: '700' }}>Reintentar</SystemText>
             </Pressable>
           </Animated.View>
         )}
@@ -657,9 +657,9 @@ export default function RecipeScreen() {
                 {/* Macro chips */}
                 <View style={styles.macroChips}>
                   {[
-                    { label: 'Proteína', value: `${selectedRecipe.totalProtein}g`, pct: selectedRecipe.macroPercentages.protein, color: '#FF6B6B' },
-                    { label: 'Carbos',   value: `${selectedRecipe.totalCarbs}g`,   pct: selectedRecipe.macroPercentages.carbs,   color: '#4ECDC4' },
-                    { label: 'Grasas',   value: `${selectedRecipe.totalFat}g`,     pct: selectedRecipe.macroPercentages.fat,     color: '#FFD93D' },
+                    { label: 'Proteína', value: `${selectedRecipe.totalProtein}g`, pct: selectedRecipe.macroPercentages.protein, color: colors.danger },
+                    { label: 'Carbos',   value: `${selectedRecipe.totalCarbs}g`,   pct: selectedRecipe.macroPercentages.carbs,   color: colors.warning },
+                    { label: 'Grasas',   value: `${selectedRecipe.totalFat}g`,     pct: selectedRecipe.macroPercentages.fat,     color: colors.accent },
                   ].map(({ label, value, pct, color }) => (
                     <View key={label} style={styles.macroChip}>
                       <View style={[styles.macroBar, { backgroundColor: color + '30' }]}>
@@ -763,7 +763,7 @@ export default function RecipeScreen() {
                     borderBottomColor: colors.panelBorder,
                   }}
                 >
-                  <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#5B7CFF18', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: colors.primary + '18', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                     <FoodIcon icon={recipe.foods?.[0]?.icon} size={40} emojiSize={18} radius={10} />
                   </View>
                   <View style={{ flex: 1 }}>
@@ -833,7 +833,7 @@ const styles = StyleSheet.create({
   // Generate button con pulso
   generateWrap: {
     marginVertical: spacing.md,
-    shadowColor: '#5B7CFF',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowRadius: 20,
     elevation: 12,
@@ -847,15 +847,15 @@ const styles = StyleSheet.create({
 
   // Aurora orbs animados
   orb: { position: 'absolute', borderRadius: 999 },
-  orb1: { width: 220, height: 220, top: 60, left: -60, backgroundColor: '#5B7CFF18' },
-  orb2: { width: 180, height: 180, top: 300, right: -40, backgroundColor: '#C084FC14' },
-  orb3: { width: 140, height: 140, top: 600, left: 40, backgroundColor: '#FB718512' },
+  orb1: { width: 220, height: 220, top: 60, left: -60, backgroundColor: colors.primary + '18' },
+  orb2: { width: 180, height: 180, top: 300, right: -40, backgroundColor: colors.accent + '14' },
+  orb3: { width: 140, height: 140, top: 600, left: 40, backgroundColor: colors.danger + '12' },
 
   // Error
   errorCard: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     marginTop: spacing.sm, padding: 14, borderRadius: 12,
-    backgroundColor: '#FB718510', borderWidth: 1, borderColor: '#FB718540',
+    backgroundColor: colors.danger + '10', borderWidth: 1, borderColor: colors.danger + '40',
   },
 
   // Hero card
@@ -864,7 +864,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   heroTopBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md },
-  difficultyPill: { backgroundColor: 'rgba(90,124,255,0.18)', borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 4, borderWidth: 1, borderColor: colors.primary + '50' },
+  difficultyPill: { backgroundColor: colors.primary + '2E', borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 4, borderWidth: 1, borderColor: colors.primary + '50' },
   favBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
   glowOrb: { position: 'absolute', width: 160, height: 160, borderRadius: 80 },
   heroEmojiWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -924,7 +924,7 @@ const styles = StyleSheet.create({
   ingredientKcalBadge: { alignItems: 'center', minWidth: 36 },
 
   // AI card
-  aiCard: { borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm, borderWidth: 1, borderColor: '#5B7CFF30' },
+  aiCard: { borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm, borderWidth: 1, borderColor: colors.primary + '30' },
   aiCardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
   aiStarBadge: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   aiSuggestion: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 10 },
@@ -942,7 +942,7 @@ const styles = StyleSheet.create({
   // AI answer
   aiAnswerBox: {
     flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start',
-    backgroundColor: 'rgba(90,124,255,0.1)', borderRadius: radius.md,
+    backgroundColor: colors.primary + '1A', borderRadius: radius.md,
     padding: spacing.md, borderWidth: 1, borderColor: colors.primary + '30',
   },
 

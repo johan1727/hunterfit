@@ -6,7 +6,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
 import * as Haptics from 'expo-haptics';
-import { colors, gradients, panel, radius, rankColors, spacing } from '../theme/system';
+import { colors, gradients, heroSizes, panel, radius, rankColors, spacing } from '../theme/system';
 import type { HunterRank } from '../types/db';
 
 /** Stops de gradiente: LinearGradient exige al menos dos colores (tupla readonly). */
@@ -56,12 +56,17 @@ export function SystemText({ children, dim, style, ...rest }: { children: React.
 export function GradientText({
   children,
   style,
+  size,
   colors: gradColors = gradients.brand,
 }: {
   children: React.ReactNode;
   style?: StyleProp<TextStyle>;
+  /** Tamaño de la escala `heroSizes` (theme/system.ts) — evita fontSize hardcodeados. */
+  size?: keyof typeof heroSizes;
   colors?: GradStops;
 }) {
+  const sizeStyle = size ? heroSizes[size] : null;
+
   // Web: react-native-web soporta gradiente CSS recortado al texto (sin MaskedView).
   if (Platform.OS === 'web') {
     const webStyle = {
@@ -71,16 +76,16 @@ export function GradientText({
       color: 'transparent',
       WebkitTextFillColor: 'transparent',
     } as unknown as TextStyle;
-    return <Text style={[styles.display, style, webStyle]}>{children}</Text>;
+    return <Text style={[styles.display, sizeStyle, style, webStyle]}>{children}</Text>;
   }
 
   return (
     <MaskedView
-      maskElement={<Text style={[styles.display, style]}>{children}</Text>}
+      maskElement={<Text style={[styles.display, sizeStyle, style]}>{children}</Text>}
     >
       <LinearGradient colors={gradColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
         {/* Texto transparente: define el tamaño del gradiente */}
-        <Text style={[styles.display, style, { opacity: 0 }]}>{children}</Text>
+        <Text style={[styles.display, sizeStyle, style, { opacity: 0 }]}>{children}</Text>
       </LinearGradient>
     </MaskedView>
   );

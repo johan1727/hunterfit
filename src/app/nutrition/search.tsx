@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Pressable, FlatList, Alert, Text, TextInput, ActivityIndicator, Modal } from 'react-native';
+import { View, ScrollView, StyleSheet, Pressable, FlatList, Alert, Text, TextInput, ActivityIndicator, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
@@ -38,7 +38,7 @@ async function checkMealQuest(userId: string) {
     await updateQuestProgress(quests[0] as any, meals.length);
   }
 }
-import { colors, gradients, radius, spacing } from '../../theme/system';
+import { colors, gradients, heroSizes, radius, spacing } from '../../theme/system';
 import {
   AuroraBackground,
   GradientText,
@@ -464,6 +464,10 @@ export default function SearchFoodScreen() {
   return (
     <SafeAreaView style={styles.root}>
       <AuroraBackground />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
         {/* Header */}
@@ -482,13 +486,21 @@ export default function SearchFoodScreen() {
               returnKeyType="search"
             />
             {searchTerm.length > 0 && (
-              <Pressable onPress={() => setSearchTerm('')} hitSlop={8}>
+              <Pressable
+                onPress={() => setSearchTerm('')}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Borrar búsqueda"
+              >
                 <Ionicons name="close-circle" size={18} color={colors.textFaint} />
               </Pressable>
             )}
             <Pressable
               onPress={() => setShowVoice(true)}
               style={styles.micBtn}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel="Registrar alimento por voz"
             >
               <Ionicons name="mic" size={20} color={colors.primary} />
             </Pressable>
@@ -578,6 +590,9 @@ export default function SearchFoodScreen() {
               styles.catPill,
               selectedCategory === 'all' && { borderColor: colors.accent, backgroundColor: colors.accent + '22' },
             ]}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityState={{ selected: selectedCategory === 'all' }}
           >
             <Text style={{ fontSize: 13 }}>⚡</Text>
             <SystemText style={[styles.catPillText, { color: selectedCategory === 'all' ? colors.accent : colors.textDim }]}>
@@ -596,6 +611,9 @@ export default function SearchFoodScreen() {
                   styles.catPill,
                   isActive && { borderColor: colors.accent, backgroundColor: colors.accent + '22' },
                 ]}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isActive }}
               >
                 <Text style={{ fontSize: 13 }}>{getCategoryEmoji(cat)}</Text>
                 <SystemText style={[styles.catPillText, { color: isActive ? colors.accent : colors.textDim }]}>
@@ -616,6 +634,9 @@ export default function SearchFoodScreen() {
             <Pressable
               onPress={() => setSelectedSubcat(null)}
               style={[styles.subPill, !selectedSubcat && styles.subPillActive]}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityState={{ selected: !selectedSubcat }}
             >
               <SystemText style={[styles.subPillText, { color: !selectedSubcat ? colors.text : colors.textFaint }]}>
                 Todas
@@ -628,6 +649,9 @@ export default function SearchFoodScreen() {
                   key={sub.label}
                   onPress={() => setSelectedSubcat(sub.label)}
                   style={[styles.subPill, isActive && styles.subPillActive]}
+                  hitSlop={6}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive }}
                 >
                   <Text style={{ fontSize: 12 }}>{sub.emoji}</Text>
                   <SystemText style={[styles.subPillText, { color: isActive ? colors.text : colors.textFaint }]}>
@@ -726,6 +750,8 @@ export default function SearchFoodScreen() {
                   <Pressable
                     onPress={(e) => { e.stopPropagation(); toggleFavorite(item); }}
                     hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={isFavorite(item.id) ? 'Quitar de favoritos' : 'Agregar a favoritos'}
                   >
                     <Ionicons
                       name={isFavorite(item.id) ? 'star' : 'star-outline'}
@@ -919,6 +945,7 @@ export default function SearchFoodScreen() {
           </View>
         </Modal>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -945,7 +972,7 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.lg, paddingTop: spacing.xl, gap: spacing.md, paddingBottom: 80 },
 
   header: { gap: spacing.md },
-  title: { fontSize: 46, lineHeight: 48, fontWeight: '900' },
+  title: { ...heroSizes.heroLg, fontWeight: '900' },
 
   searchHero: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,

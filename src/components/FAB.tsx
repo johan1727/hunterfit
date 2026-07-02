@@ -6,14 +6,17 @@ import { gradients, radius } from '../theme/system';
 interface Props {
   onPress: () => void;
   label?: string;
+  accessibilityLabel?: string;
 }
 
-export function FAB({ onPress, label = '+' }: Props) {
+export function FAB({ onPress, label = '+', accessibilityLabel = 'Agregar comida' }: Props) {
   return (
     <Pressable
       style={({ pressed }) => [styles.wrap, pressed && { opacity: 0.85, transform: [{ scale: 0.96 }] }]}
       onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
     >
       <LinearGradient
         colors={gradients.brand}

@@ -14,7 +14,7 @@ import { supabase } from '../../lib/supabase';
 import { useNetworkError } from '../../lib/networkError';
 import { completeWorkout } from '../../services/routines';
 import { checkAndAwardBadges } from '../../services/badges';
-import { colors, gradients, radius, spacing } from '../../theme/system';
+import { colors, gradients, heroSizes, radius, spacing } from '../../theme/system';
 import {
   AuroraBackground,
   GradientText,
@@ -498,7 +498,7 @@ const styles = StyleSheet.create({
   nextLabel: { fontSize: 10, letterSpacing: 2, textTransform: 'uppercase' },
 
   completeHeader: { gap: spacing.sm },
-  completeTitle: { fontSize: 48, lineHeight: 52, fontWeight: '900' },
+  completeTitle: { ...heroSizes.heroXl, fontWeight: '900' },
   xpBadgeWrap: { borderRadius: radius.lg, padding: 2, alignSelf: 'center', marginVertical: spacing.lg },
   xpBadgeInner: {
     backgroundColor: colors.bg,

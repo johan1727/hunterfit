@@ -24,7 +24,8 @@ export async function analyzeBodyPhoto(base64: string, mimeType: string): Promis
   return data as BodyAnalysis;
 }
 
-async function describeFunctionError(error: unknown): Promise<string> {
+/** Extrae el mensaje de error del body JSON de una Edge Function (campo `error`). */
+export async function describeFunctionError(error: unknown): Promise<string> {
   const anyErr = error as { context?: Response; message?: string };
   try {
     if (anyErr.context) {

@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { base64ToUint8Array } from '../../lib/base64';
-import { colors, gradients, radius, spacing } from '../../theme/system';
+import { colors, gradients, heroSizes, radius, spacing } from '../../theme/system';
 import {
   AuroraBackground, GradientText, Pill, SystemPanel, SystemText, SystemButton, SystemInput,
 } from '../../components/system';
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: spacing.lg, paddingTop: spacing.xl, gap: spacing.md, paddingBottom: 80 },
   header: { gap: spacing.sm },
-  title: { fontSize: 38, lineHeight: 42, fontWeight: '900' },
+  title: { ...heroSizes.heroSm, fontWeight: '900' },
   sectionLabel: { fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: colors.textFaint, marginBottom: spacing.sm },
   preview: { width: '100%', height: 280, borderRadius: radius.lg },
   gridItem: { flex: 1, borderRadius: radius.md, overflow: 'hidden', aspectRatio: 0.75 },

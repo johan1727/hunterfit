@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Pressable, Text, TextInput } from 'react-native';
+import { View, ScrollView, StyleSheet, Pressable, Text, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,7 +7,7 @@ import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../hooks/useAuth';
 import { useUpdateProfile } from '../../hooks/useData';
 import { calculateTargets } from '../../services/nutrition';
-import { colors, gradients, radius, spacing } from '../../theme/system';
+import { colors, gradients, heroSizes, radius, spacing } from '../../theme/system';
 import {
   AuroraBackground,
   GradientText,
@@ -102,10 +102,11 @@ export default function QuizScreen() {
       carbs_g: targets.carbs_g,
       fat_g: targets.fat_g,
     };
-    // Solo en primera vez: marcar onboarding incompleto hasta body-photo, e inicializar stats
+    // Solo en primera vez: marcar onboarding incompleto hasta body-photo.
+    // xp/level/rank/streak_days ya no son escribibles desde el cliente — el
+    // trigger handle_new_user los inicializa en 0/1/'E'/0 al crear el perfil.
     if (!fromProfile) {
       patch.onboarding_complete = false;
-      patch.xp = 0; patch.level = 1; patch.rank = 'E'; patch.streak_days = 0;
     }
     await updateProfile.mutateAsync(patch as any);
     fromProfile ? router.replace('/(tabs)/profile') : router.push('/onboarding/character-select');
@@ -114,6 +115,10 @@ export default function QuizScreen() {
   return (
     <SafeAreaView style={styles.root}>
       <AuroraBackground />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -130,6 +135,9 @@ export default function QuizScreen() {
                 router.replace('/(tabs)/home');
               }}
               style={{ paddingVertical: 6, paddingHorizontal: 12 }}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Salir del cuestionario"
             >
               <SystemText dim style={{ fontSize: 13 }}>Salir ×</SystemText>
             </Pressable>
@@ -258,6 +266,7 @@ export default function QuizScreen() {
           )}
         </SystemWindowPanel>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -270,7 +279,7 @@ const styles = StyleSheet.create({
   },
 
   header: { gap: spacing.sm },
-  title: { fontSize: 42, lineHeight: 46, fontWeight: '900' },
+  title: { ...heroSizes.hero, fontWeight: '900' },
 
   progressWrap: { gap: spacing.sm },
   progressRow: { flexDirection: 'row', justifyContent: 'space-between' },

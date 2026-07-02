@@ -9,6 +9,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useHunterData } from '../../hooks/useHunterData';
+import { localDateString } from '../../lib/dates';
 import { useBodyMeasurements, useAddBodyMeasurement, useWeightHistory } from '../../hooks/useData';
 import { useDemoStore } from '../../lib/demoStore';
 import {
@@ -45,7 +46,7 @@ export default function BodyTrackingScreen() {
       return;
     }
 
-    const now = new Date().toISOString().split('T')[0];
+    const now = localDateString();
     const measurement = {
       taken_at: now,
       weight_kg: weight ? parseFloat(weight.replace(',', '.')) : null,

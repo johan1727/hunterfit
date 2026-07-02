@@ -12,7 +12,7 @@ import { useHunterData } from '../../hooks/useHunterData';
 import { supabase } from '../../lib/supabase';
 import { base64ToUint8Array } from '../../lib/base64';
 import { analyzeBodyPhoto } from '../../services/ai';
-import { colors, gradients, radius, spacing } from '../../theme/system';
+import { colors, gradients, heroSizes, radius, spacing } from '../../theme/system';
 import {
   AuroraBackground,
   GradientText,
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.lg, paddingTop: spacing.xl, gap: spacing.md, paddingBottom: 60 },
 
   header: { gap: spacing.sm },
-  title: { fontSize: 48, lineHeight: 52, fontWeight: '900' },
+  title: { ...heroSizes.heroXl, fontWeight: '900' },
 
   card: {},
   placeholder: { alignItems: 'center', paddingVertical: spacing.lg },

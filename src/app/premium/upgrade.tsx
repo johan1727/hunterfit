@@ -134,7 +134,13 @@ export default function UpgradeScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.headerRow}>
-          <Pressable onPress={() => router.back()} style={{ padding: 8 }}>
+          <Pressable
+            onPress={() => router.back()}
+            style={{ padding: 8 }}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar"
+          >
             <Ionicons name="close" size={22} color={colors.textDim} />
           </Pressable>
           <View style={styles.proBadge}>
@@ -304,6 +310,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgElevated,
     borderWidth: 1.5, borderColor: colors.glow + '55',
     shadowColor: colors.glow, shadowOpacity: 0.5, shadowRadius: 18, shadowOffset: { width: 0, height: 0 },
+    elevation: 10,
   },
   planCard: {
     borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.panelBorder,

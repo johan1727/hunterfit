@@ -9,17 +9,18 @@ export interface PurchaseResult {
 }
 
 /**
- * Entitlements: marca premium en Supabase y registra la suscripción.
+ * Entitlements: marca premium en Supabase y registra la suscripción vía el RPC
+ * `apply_entitlement` (SECURITY DEFINER) — profiles ya no acepta UPDATE directo
+ * de columnas de plan/premium desde el cliente.
  * MOCK de la compra (sin cobro real). Cuando se integre RevenueCat, el SDK
  * llamará a esta misma función con source='revenuecat' tras validar el pago.
  */
 export async function grantEntitlement(
   planId: PlanId,
-  userId: string,
+  _userId: string,
   source: 'mock' | 'revenuecat' = 'mock',
 ): Promise<PurchaseResult> {
   try {
-    const isFamily = planId.startsWith('family_');
     // Mock: la expiración se estima localmente. Con RevenueCat real, derivarla de
     // customerInfo.entitlements.active[..].expirationDate.
     const expires = new Date();
@@ -27,13 +28,12 @@ export async function grantEntitlement(
     else expires.setMonth(expires.getMonth() + 1);
     const expiresAt = expires.toISOString();
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({ is_premium: true, is_family: isFamily, plan_id: planId, plan_source: source, plan_expires_at: expiresAt })
-      .eq('id', userId);
+    const { error } = await supabase.rpc('apply_entitlement', {
+      p_plan_id: planId,
+      p_expires_at: expiresAt,
+      p_source: source,
+    });
     if (error) throw error;
-    // Historial (no bloquea la compra si falla)
-    await supabase.from('subscriptions').insert({ user_id: userId, plan_id: planId, source, status: 'active', expires_at: expiresAt });
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message ?? 'Error al procesar el pago' };
@@ -68,8 +68,12 @@ export async function restorePurchases(userId: string): Promise<PurchaseResult> 
   if (RC_ENABLED) {
     const r = await restoreViaRevenueCat();
     if (!r.ok) return { success: false, error: r.error ?? 'No se encontró ninguna compra anterior' };
-    // Hay entitlement activo en la tienda → reflejarlo en Supabase
-    const { error } = await supabase.from('profiles').update({ is_premium: true, plan_source: 'revenuecat' }).eq('id', userId);
+    // Hay entitlement activo en la tienda → reflejarlo en Supabase (RPC, no toca plan_id/plan_expires_at)
+    const { error } = await supabase.rpc('apply_entitlement', {
+      p_plan_id: null,
+      p_expires_at: null,
+      p_source: 'revenuecat',
+    });
     if (error) return { success: false, error: error.message };
     return { success: true };
   }

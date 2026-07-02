@@ -174,7 +174,7 @@ export function useDailyQuests(userId: string | null, level: number | undefined)
 export function useWeeklyQuests(userId: string | null, level: number | undefined) {
   const weekStart = (() => {
     const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - d.getDay());
-    return d.toISOString().split('T')[0];
+    return localDateString(d);
   })();
   return useQuery({
     queryKey: ['weekly_quests', userId, weekStart],
@@ -349,7 +349,7 @@ export function useWeeklyCalories(userId: string | null) {
       for (let i = 6; i >= 0; i--) {
         const d = new Date(today);
         d.setDate(d.getDate() - i);
-        days.push({ date: d.toISOString().split('T')[0], kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 });
+        days.push({ date: localDateString(d), kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 });
       }
       const start = days[0].date;
       const { data, error } = await supabase
@@ -378,9 +378,11 @@ export function useCopyYesterday(userId: string | null, date: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const yesterday = new Date(date);
+      // Parsear a mediodía LOCAL: new Date('YYYY-MM-DD') sería medianoche UTC,
+      // que en husos negativos cae en el día anterior y corre la fecha 2 días.
+      const yesterday = new Date(date + 'T12:00:00');
       yesterday.setDate(yesterday.getDate() - 1);
-      const yDate = yesterday.toISOString().split('T')[0];
+      const yDate = localDateString(yesterday);
       const { data, error } = await supabase
         .from('meal_logs').select('*').eq('user_id', userId!).eq('date', yDate);
       if (error) throw error;
@@ -519,17 +521,19 @@ export function useFastingStreak(userId: string | null) {
         .order('ended_at', { ascending: false })
         .limit(30);
       if (error) throw error;
-      // Count consecutive days with a completed fast
+      // Count consecutive days with a completed fast (día local, no UTC)
       const days = new Set(
-        (data ?? []).map((r: any) => (r.ended_at as string).split('T')[0])
+        (data ?? []).map((r: any) => localDateString(new Date(r.ended_at as string)))
       );
       const arr = [...days].sort().reverse();
       let streak = 0;
-      const today = new Date().toISOString().split('T')[0];
+      const today = localDateString();
       for (let i = 0; i < arr.length; i++) {
-        const expected = new Date(today);
+        // Mediodía local — new Date('YYYY-MM-DD') sería medianoche UTC (día
+        // anterior en husos negativos) y la racha marcaría 0 siempre.
+        const expected = new Date(today + 'T12:00:00');
         expected.setDate(expected.getDate() - i);
-        if (arr[i] === expected.toISOString().split('T')[0]) streak++;
+        if (arr[i] === localDateString(expected)) streak++;
         else break;
       }
       return streak;

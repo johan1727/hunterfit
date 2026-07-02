@@ -8,7 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../hooks/useAuth';
 import { useCharacters, useUpdateProfile } from '../../hooks/useData';
 import { characterImage, characterFullImage, CHARS_WITH_ART } from '../../constants/game';
-import { colors, gradients, radius, spacing } from '../../theme/system';
+import { colors, gradients, heroSizes, radius, spacing } from '../../theme/system';
 import {
   AuroraBackground,
   GradientText,
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   header: { gap: spacing.sm },
-  title: { fontSize: 42, lineHeight: 46, fontWeight: '900' },
+  title: { ...heroSizes.hero, fontWeight: '900' },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   gridCell: { width: '48.5%' },

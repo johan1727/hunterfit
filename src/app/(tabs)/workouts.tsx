@@ -12,7 +12,7 @@ import { useWeekWorkouts } from '../../hooks/useData';
 import { useDemoStore } from '../../lib/demoStore';
 import { regeneratePlan } from '../../services/routines';
 import { supabase } from '../../lib/supabase';
-import { colors, gradients, radius, spacing } from '../../theme/system';
+import { colors, gradients, heroSizes, radius, spacing } from '../../theme/system';
 import { AuroraBackground, GradientText, Pill, SystemPanel, SystemText, SystemButton } from '../../components/system';
 import { HudPanel } from '../../components/HudPanel';
 import { HeroStat } from '../../components/HeroStat';
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: spacing.md, paddingTop: spacing.lg, gap: spacing.sm, paddingBottom: 100 },
   header: { gap: 6, marginBottom: spacing.sm },
-  title: { fontSize: 46, lineHeight: 48 },
+  title: { ...heroSizes.heroLg },
 
   weekHeroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
   dayCells: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end', maxWidth: 160 },

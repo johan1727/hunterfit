@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Text, TextInput, Alert, Pressable } from 'react-native';
+import { View, ScrollView, StyleSheet, Text, TextInput, Alert, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
+import { localDateString } from '../../lib/dates';
 import { useHunterData } from '../../hooks/useHunterData';
 import { useDemoStore } from '../../lib/demoStore';
 import { useWeightHistory, useLogWeight, useWeeklyCalories, useUpdateProfile } from '../../hooks/useData';
@@ -124,6 +125,10 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.root}>
       <AuroraBackground />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Status Window — el panel hero */}
@@ -355,6 +360,7 @@ export default function ProfileScreen() {
         </Animated.View>
 
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -393,7 +399,7 @@ function WeeklyNutritionPanel({ data, profile }: { data: DayNutrition[]; profile
   const values = data.map((d) => d[metric]);
   const maxVal = Math.max(target * 1.2, ...values);
   const avg = Math.round(values.reduce((s, v) => s + v, 0) / 7);
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = localDateString();
 
   return (
     <SystemPanel style={{ gap: spacing.md }}>
